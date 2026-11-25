@@ -1,9 +1,11 @@
 <!--
-	Log lines in one size: time, then host and unit (their own columns on desktop), then the
-	text, in warn-ink for a warning and bad for an error, with the search's match washed.
+	Log lines in one size: time, with its date above it when that is not today, then host and
+	unit (their own columns on desktop), then the text, in warn-ink for a warning and bad for an
+	error, with the search's match washed.
 -->
 <script lang="ts">
-	import { hms } from '#lib/derive/format.ts';
+	import { hms, otherDay } from '#lib/derive/format.ts';
+	import { fleet } from '#lib/stream/fleet.svelte.ts';
 	import type { Shown } from '#lib/log/feed.svelte.ts';
 	import type { Level } from '#lib/wire/types.ts';
 
@@ -19,13 +21,18 @@
 			: [text.slice(0, i), text.slice(i, i + q.length), text.slice(i + q.length)];
 	}
 	const unitName = (u: string) => u.replace(/\.service$/, '');
+	/** today is the fleet's, which a simulated fleet sets */
+	const now = $derived(fleet.snapshot?.at ?? Date.now());
 </script>
 
 <div class="logs" class:wide>
 	{#each lines as l (l.key)}
 		{@const [a, m, b] = cut(l.text)}
+		{@const day = otherDay(l.at, now)}
 		<div class="l {TONE[l.level]}" class:new={l.fresh}>
-			<span class="t">{hms(l.at)}</span>
+			<span class="t">
+				{#if day}<span class="d">{day}</span>{/if}{hms(l.at)}
+			</span>
 			{#if wide}
 				<span class="h">{l.machine}</span><span class="u ell">{unitName(l.unit)}</span><span
 					class="x"

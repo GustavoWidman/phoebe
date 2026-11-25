@@ -769,6 +769,9 @@ a.band:active {
 .logs .t {
 	color: var(--faint);
 }
+.logs .t .d {
+	display: block;
+}
 .logs .h {
 	color: var(--ink2);
 }
