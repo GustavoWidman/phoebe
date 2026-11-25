@@ -5,14 +5,16 @@
  *
  *   bun scripts/shots.ts [--phoebe <binary>] [--out <dir>] [--only <state>]
  *
- * It starts its own server with the build in build/, holds its clock still, and drives one
- * browser at a time. Shots land in shots/<state>-<phone|desk>-<light|dark>.png, sheets in
+ * It starts its own servers with the build in build/, one open to anyone and one that asks its
+ * readers to sign in, for the sign-in and device states, holds their clocks still, and drives
+ * one browser at a time. Shots land in shots/<state>-<phone|desk>-<light|dark>.png, sheets in
  * shots/sheet-<phone|desk>-<light|dark>.png.
  */
 import { spawn } from 'node:child_process';
 import { mkdirSync, readFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
-import { chromium, webkit, type Browser, type Page } from '@playwright/test';
+import { chromium, webkit, type Browser, type BrowserContext, type Page } from '@playwright/test';
+import { stubPush, type PushStub } from '../tests/e2e/push.ts';
 
 const WEB = resolve(import.meta.dirname, '..');
 const args = process.argv.slice(2);
@@ -25,6 +27,8 @@ const OUT = resolve(flag('out') ?? join(WEB, 'shots'));
 const ONLY = flag('only');
 const PORT = 7991;
 const BASE = `http://127.0.0.1:${PORT}`;
+/** the fixture that asks its readers to sign in */
+const SIGNIN = `http://127.0.0.1:${PORT + 1}`;
 
 /** the fixture's clock: the timeline starts firing; from 18 minutes on it is all clear */
 const FIRING = 0;
@@ -36,8 +40,33 @@ type State = {
 	t: number;
 	path: (alerts: Record<string, string>) => string;
 	on?: Device[];
+	/** on the fixture that signs its readers in, the page first set up by `before` */
+	signin?: boolean;
+	before?: (page: Page) => Promise<void>;
 	act?: (page: Page) => Promise<void>;
 };
+
+const NEW = 'https://web.push.apple.com/QGxnew-iphone';
+const KEY =
+	'BBgqG0VbQAPnBlmSzWD_uRkfTJJ7rNkfZc3HbxlUfhd8DBhqYt_DqIxDFK71gxU01Umj-1CqpRCOP0NQP_4183g';
+const push = (stub: PushStub) => (page: Page) => page.addInitScript(stubPush, stub);
+const offTailnet = (page: Page) => page.route('**/auth/ping', (r) => r.abort('connectionrefused'));
+/** the device's session, marked as one the server no longer takes */
+const ended = (page: Page) =>
+	page.evaluate(async () => {
+		const db = await new Promise<IDBDatabase>((ok) => {
+			const r = indexedDB.open('phoebe-device', 1);
+			r.onsuccess = () => ok(r.result);
+		});
+		const store = (mode: IDBTransactionMode) =>
+			db.transaction('phoebe-device', mode).objectStore('phoebe-device');
+		const stored = await new Promise<{ session: object }>((ok) => {
+			const r = store('readonly').get('this');
+			r.onsuccess = () => ok(r.result);
+		});
+		stored.session = { ...stored.session, ended: true };
+		await new Promise((ok) => (store('readwrite').put(stored, 'this').onsuccess = ok));
+	});
 
 const STATES: State[] = [
 	{ name: 'fleet', t: FIRING, path: () => '/' },
@@ -80,7 +109,75 @@ const STATES: State[] = [
 			await page.waitForTimeout(500);
 		}
 	},
-	{ name: 'device', t: FIRING, path: () => '/device' }
+	{ name: 'device', t: FIRING, path: () => '/device' },
+	{ name: 'signed-in', t: FIRING, path: () => '/signin', signin: true },
+	{ name: 'signin-asking', t: FIRING, path: () => '/signin', signin: true, before: offTailnet },
+	{
+		name: 'signin-refused',
+		t: FIRING,
+		path: () => '/signin',
+		signin: true,
+		before: (page) =>
+			page.route('**/auth/session', (r) =>
+				r.fulfill({ status: 403, body: 'the tailnet policy grants no access' })
+			)
+	},
+	{
+		name: 'signin-ended',
+		t: FIRING,
+		path: () => '/signin',
+		signin: true,
+		before: async (page) => {
+			await page.goto(`${SIGNIN}/device`);
+			await page.waitForSelector('[data-session]');
+			await ended(page);
+			await offTailnet(page);
+		}
+	},
+	{
+		name: 'device-off',
+		t: FIRING,
+		path: () => '/device',
+		signin: true,
+		before: push({ permission: 'default', subscription: null, subscribe: { endpoint: NEW } })
+	},
+	{
+		name: 'device-uncommitted',
+		t: FIRING,
+		path: () => '/device',
+		signin: true,
+		before: push({ permission: 'default', subscription: null, subscribe: { endpoint: NEW } }),
+		act: async (page) => {
+			await page.getByRole('button', { name: 'Turn on' }).click();
+			await page.waitForSelector('.entry');
+			await page.locator('section.push').scrollIntoViewIfNeeded();
+		}
+	},
+	{
+		name: 'device-on',
+		t: FIRING,
+		path: () => '/device',
+		signin: true,
+		before: push({
+			permission: 'granted',
+			subscription: { endpoint: 'https://web.push.apple.com/QGxfixture-iphone', key: KEY },
+			subscribe: { endpoint: NEW }
+		})
+	},
+	{
+		name: 'device-install',
+		t: FIRING,
+		path: () => '/device',
+		signin: true,
+		on: ['phone'],
+		before: push({
+			supported: false,
+			ios: true,
+			permission: 'default',
+			subscription: null,
+			subscribe: { endpoint: NEW }
+		})
+	}
 ];
 
 /** waits for the screen, its charts and the fonts */
@@ -95,8 +192,10 @@ async function settle(page: Page) {
 }
 
 async function seek(t: number) {
-	const res = await fetch(`${BASE}/fixture/seek?t=${t}&speed=0`, { method: 'POST' });
-	if (!res.ok) throw new Error(`seek: ${res.status}`);
+	for (const base of [BASE, SIGNIN]) {
+		const res = await fetch(`${base}/fixture/seek?t=${t}&speed=0`, { method: 'POST' });
+		if (!res.ok) throw new Error(`seek: ${res.status}`);
+	}
 }
 
 /** the id of each alert of the snapshot, by its rule */
@@ -106,31 +205,44 @@ async function alertIds(): Promise<Record<string, string>> {
 	return Object.fromEntries(alerts.map((a) => [a.rule, a.id]));
 }
 
-const server = spawn(
-	PHOEBE,
-	[
-		'web',
-		'--fixture',
-		'--speed',
-		'0',
-		'--listen',
-		`127.0.0.1:${PORT}`,
-		'--web-dir',
-		join(WEB, 'build')
-	],
-	{
-		stdio: 'ignore'
-	}
+const servers = [
+	[BASE, []],
+	[SIGNIN, ['--signin']]
+].map(([base, extra]) =>
+	spawn(
+		PHOEBE,
+		[
+			'web',
+			'--fixture',
+			'--speed',
+			'0',
+			'--listen',
+			(base as string).replace('http://', ''),
+			'--web-dir',
+			join(WEB, 'build'),
+			...extra
+		],
+		{ stdio: 'ignore' }
+	)
 );
-process.on('exit', () => server.kill());
-for (let i = 0; ; i++) {
-	try {
-		await fetch(`${BASE}/api/hello`);
-		break;
-	} catch {
-		if (i > 50) throw new Error(`${PHOEBE} did not start`);
-		await new Promise((ok) => setTimeout(ok, 100));
+process.on('exit', () => servers.forEach((s) => s.kill()));
+for (const base of [BASE, SIGNIN])
+	for (let i = 0; ; i++) {
+		try {
+			await fetch(`${base}/api/hello`);
+			break;
+		} catch {
+			if (i > 50) throw new Error(`${PHOEBE} did not start`);
+			await new Promise((ok) => setTimeout(ok, 100));
+		}
 	}
+
+/** a page signed in to the fixture that asks for it */
+async function signedIn(context: BrowserContext) {
+	const page = await context.newPage();
+	await page.goto(`${SIGNIN}/signin`);
+	await page.waitForSelector('.auth .kv');
+	await page.close();
 }
 
 mkdirSync(OUT, { recursive: true });
@@ -158,17 +270,24 @@ for (const device of ['phone', 'desk'] as Device[]) {
 			locale: 'en-US',
 			serviceWorkers: 'block'
 		});
-		const page = await context.newPage();
+		await signedIn(context);
 		for (const state of states) {
 			if (state.on && !state.on.includes(device)) continue;
 			await seek(state.t);
-			await page.goto(`${BASE}${state.path(await alertIds())}`);
+			const page = await context.newPage();
+			await state.before?.(page);
+			const base = state.signin ? SIGNIN : BASE;
+			await page.goto(`${base}${state.path(await alertIds())}`);
 			await settle(page);
+			if (state.name.startsWith('signin-')) await page.waitForTimeout(1500);
 			await state.act?.(page);
 			const file = join(OUT, `${state.name}-${device}-${scheme}.png`);
 			await page.screenshot({ path: file });
 			(shots[`${device}-${scheme}`] ??= []).push(file);
 			console.log(file);
+			await page.close();
+			// a state that ended the session leaves the next to sign in again
+			if (state.name === 'signin-ended') await signedIn(context);
 		}
 		await context.close();
 	}
@@ -200,4 +319,4 @@ if (!ONLY) {
 	}
 	await browser.close();
 }
-server.kill();
+servers.forEach((s) => s.kill());
