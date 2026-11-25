@@ -41,7 +41,10 @@
             common
             ./nix/modules/nixos.nix
           ];
-          darwinModules.default.imports = [ common ];
+          darwinModules.default.imports = [
+            common
+            ./nix/modules/darwin.nix
+          ];
         };
 
         perSystem =
