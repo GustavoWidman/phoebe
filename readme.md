@@ -6,7 +6,8 @@ phoebe is the observability app for my nix fleet. the part that exists is
 everything under the app: nix modules that collect every machine's metrics
 and logs, store them on several machines at once, and turn them into alerts,
 all generated from one registry of the fleet's machines and services. the
-`phoebe` binary itself only prints its version so far.
+`phoebe` binary serves the app's contract over a simulated fleet so far, for
+the web app to be built against.
 
 named after phoebe, the titaness of the bright moon, who married coeus. coeus
 deploys the fleet, so it seemed only fair that his wife keep an eye on it.
@@ -148,6 +149,52 @@ notification. that only works because `MachineDown` fires first: its scrapes
 fail within 15 seconds and probes within a minute, and both rules wait 5
 minutes.
 
+## the app
+
+`phoebe web` is the app the fleet is read through: a server next to every
+node's stores, and a web app that installs on a phone. what exists of it so
+far is its contract and a simulated fleet that serves it:
+
+```bash
+nix develop -c cargo run -- web --fixture   # http://127.0.0.1:7980
+```
+
+the simulated fleet is the real one, with the same six machines, sixteen
+services and their probes. its clock starts at 15:42 on 2026-11-25 with
+lavalink failed on oracle-1 (a page), derp's certificate about to expire
+(info), a full disk on oracle-2 resolved two hours earlier, lab unable to
+reach r3dlust.com while every other node can, and both desktops resting.
+over the next 18 minutes lab's route comes back, lavalink is restarted, derp
+renews its certificate and the laptop wakes. from 16:00 on it's all clear.
+
+every answer is a function of the moment alone, so a moment looks the same
+however the clock got there. `--speed` sets how fast the clock runs (`0`
+holds it), and `POST /fixture/seek?t=<seconds>[&speed=<x>]` moves it, which
+is what tests do. `--web-dir` serves a built web app beside the api. anyone
+who reaches the listening address gets in: it's a made-up fleet, it has
+nothing to hide.
+
+| route | answers |
+| --- | --- |
+| `GET /api/hello` | the build, the schema version and the sign-in addresses |
+| `GET /api/stream` | server-sent events: the whole fleet on connect, then again at each scrape that changes it |
+| `GET /api/series?of=machine:<name>&metric=<m>&range=<r>` | `[t, value]` points of `cpu`, `mem`, `disk`, `load`, or `net` as `rx` and `tx`, over `1h`, `6h`, `24h` or `7d` |
+| `GET /api/series?of=service:<name>&metric=latency&range=<r>[&node=<node>]` | `[t, min, median, max]` across the nodes, or one node's `[t, value]` |
+| `GET /api/logs?machine=&unit=&service=&q=&before=&limit=` | lines, newest first, and the `before` of the next page |
+| `GET /api/logs/tail?machine=&unit=&service=&q=` | server-sent events: the lines that arrive |
+| `GET /api/alerts?range=<r>` | the alerts that fired within the range (24h unless given), newest first |
+| `GET /api/alerts/<id>` | an alert, each node's pending, firing and resolved, who pushed it, and the series that shows it |
+
+### the contract
+
+every shape the app reads is a rust type in `src/web/wire.rs`.
+`web/src/lib/wire/types.ts` declares them for the browser, and
+`contract/web.json` holds an example of every message, both generated from
+those types. a test fails while either file differs from what the types
+generate, and `PHOEBE_BLESS=1 cargo test web::` rewrites both. another test
+fails while a kind the types declare shows up in no example, so the contract
+can't quietly fall behind the types.
+
 ## sharp edges
 
 - **addresses are written down, not discovered.** every machine reaches the
@@ -183,8 +230,17 @@ minutes.
 │       ├── config.nix    # every program's configuration, generated from the registry
 │       ├── nixos.nix     # nixpkgs' services and the firewall
 │       └── darwin.nix    # the launchd daemons
+├── contract/web.json     # an example of every message the app reads
+├── web/src/lib/wire/     # their typescript types
 └── src/
-    └── main.rs           # the binary
+    ├── main.rs           # the binary
+    └── web/
+        ├── wire.rs       # every shape the app reads
+        ├── query.rs      # what it asks, parsed at the edge
+        ├── site.rs       # the routes
+        ├── source.rs     # where their answers come from
+        ├── fixture/      # the simulated fleet and its clock
+        └── test/         # the contract, the generated types and the routes
 ```
 
 ## hacking on it
@@ -222,5 +278,5 @@ from the cache and none of them compiles rust.
 
 ---
 
-the binary still only prints its version. the lamp is wired, though. it just
-has no shade yet.
+the binary only serves a fleet it made up so far. the lamp is wired and lit,
+it's just pointed at a painting of the room.
