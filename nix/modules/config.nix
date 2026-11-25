@@ -137,9 +137,12 @@ let
     ) (unique (map (probe: probe.query) (filter (probe: probe.kind == "dns") probes)))
   );
 
-  # every node probes every target, so every prometheus holds every node's view
+  # every node probes every target, so every prometheus holds every node's view.
+  # every prometheus asks every node's blackbox exporter, so a target sees the
+  # square of the node count in probes per interval, hence the longer interval
   probeJob = {
     job_name = "probe";
+    scrape_interval = "60s";
     metrics_path = "/probe";
     static_configs = concatMap (
       prober:

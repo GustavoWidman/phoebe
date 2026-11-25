@@ -87,7 +87,10 @@ every node also runs:
   every service's metrics, and every node's prometheus, loki, alertmanager
   and blackbox exporter. it also asks every node's blackbox exporter to run
   every probe, so each prometheus holds every node's view of every service.
-  it keeps metrics for `node.retention.metrics` (90 days).
+  that makes a target see the square of the node count in probes, so probes
+  run once a minute (16 a minute per target with four nodes) while every
+  other scrape runs every 15 seconds. it keeps metrics for
+  `node.retention.metrics` (90 days).
 - **loki**, keeping logs for `node.retention.logs` (30 days).
 - **alertmanager**, in one gossip cluster with the other nodes. every
   prometheus sends its alerts to every alertmanager, and the cluster makes
