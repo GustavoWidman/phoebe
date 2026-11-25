@@ -30,6 +30,15 @@
       let
         common = flake-parts-lib.importApply ./nix/modules/common.nix { inherit self; };
         web = flake-parts-lib.importApply ./nix/modules/web/common.nix { inherit self; };
+
+        # a fleet's nodes, for the offline Worker that `nix build` and the checks use
+        nodes = [
+          "oracle-1"
+          "oracle-2"
+          "lab"
+          "altar"
+        ];
+        offlineWorker = self.lib.offlineWorker { inherit nodes; };
       in
       {
         # nixpkgs no longer evaluates for x86_64-darwin
@@ -55,6 +64,9 @@
             ./nix/modules/darwin.nix
             ./nix/modules/web/darwin.nix
           ];
+
+          # `{ nodes }` to the offline page Worker's module, the same store path on every system
+          lib.offlineWorker = import ./nix/offline-worker.nix;
         };
 
         perSystem =
@@ -79,6 +91,10 @@
             packages = {
               default = phoebe;
               inherit phoebe-web;
+              offline-worker = pkgs.runCommandLocal "phoebe-offline-worker" { } ''
+                mkdir $out
+                cp ${offlineWorker} $out/worker.js
+              '';
             };
 
             checks = {
@@ -86,6 +102,12 @@
             }
             // phoebe.passthru.checks
             // lib.mapAttrs' (name: lib.nameValuePair "phoebe-web-${name}") phoebe-web.passthru.checks
+            // lib.mapAttrs' (name: lib.nameValuePair "offline-worker-${name}") (
+              import ./nix/offline-worker-checks.nix {
+                inherit pkgs self nodes;
+                module = offlineWorker;
+              }
+            )
             // import ./nix/checks.nix {
               inherit
                 pkgs

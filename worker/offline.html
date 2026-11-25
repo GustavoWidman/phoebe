@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="en">
+	<head>
+		<meta charset="utf-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+		<meta name="robots" content="noindex" />
+		<title>phoebe · offline</title>
+		<link rel="icon" href="@icon@" type="image/svg+xml" />
+		@style@
+	</head>
+	<body>
+		<main>
+			<p class="wm">
+				<svg width="15" height="15" viewBox="0 0 24 24" aria-hidden="true">
+					<circle cx="12" cy="12" r="9.5" fill="none" stroke="currentColor" stroke-width="2" />
+					<path d="M12 5.6a6.4 6.4 0 0 0 0 12.8a4.6 6.4 0 0 1 0-12.8z" fill="currentColor" />
+				</svg>
+				phoebe
+			</p>
+			<h1>No phoebe node answered</h1>
+			<p class="sub">
+				None of the nodes that serve phoebe is connected. A node disconnects when it loses the
+				tailnet or its prometheus, loki or alertmanager stops answering, and this page reloads as
+				soon as one is back.
+			</p>
+			<div class="retry">
+				<span>retrying every 15s</span>
+				<div class="line"><i></i></div>
+			</div>
+			<p class="probe"><i class="dot"></i><span id="ago">no answer · checked just now</span></p>
+
+			<h2 class="lbl">Nodes<hr /><span class="v">@count@</span></h2>
+			<ul class="hosts">@hosts@</ul>
+
+			<h2 class="lbl">From the tailnet<hr /></h2>
+			<div class="cmd">
+				<code id="cmd">journalctl -u phoebe-web -n 20</code>
+				<button id="copy" type="button">copy</button>
+			</div>
+			<p class="note">on any node: why it left the tunnel, in its own words</p>
+		</main>
+		@script@
+	</body>
+</html>
