@@ -221,13 +221,8 @@ fn a_resolved_alert_keeps_its_episode_and_who_fired_it() {
     );
 }
 
-#[test]
-fn a_timeline_is_each_nodes_pending_firing_and_resolved() {
-    let recorded = Recorded::load();
-    let history = prometheus::matrix(&Recorded::file("prometheus/timeline.json")).unwrap();
-    let node = Hostname::from("altar");
-    let timeline = alerts::timeline(&node, &history, recorded.now, alerts::EVALUATION);
-    let kinds: Vec<&str> = timeline
+fn kinds(timeline: &[TimelineEntry]) -> Vec<&'static str> {
+    timeline
         .iter()
         .map(|entry| match entry {
             TimelineEntry::Pending { .. } => "pending",
@@ -235,8 +230,26 @@ fn a_timeline_is_each_nodes_pending_firing_and_resolved() {
             TimelineEntry::Resolved { .. } => "resolved",
             TimelineEntry::Notified { .. } => "notified",
         })
-        .collect();
-    assert_eq!(kinds, ["firing", "resolved", "pending", "firing"]);
+        .collect()
+}
+
+/// the recorded alert fired, resolved and fired again within the range its
+/// timeline is asked over
+#[test]
+fn a_timeline_is_each_nodes_pending_firing_and_resolved_of_its_episode() {
+    let recorded = Recorded::load();
+    let history = prometheus::matrix(&Recorded::file("prometheus/timeline.json")).unwrap();
+    let node = Hostname::from("altar");
+    let timeline =
+        |since| alerts::timeline(&node, &history, since, recorded.now, alerts::EVALUATION);
+    assert_eq!(
+        kinds(&timeline(0)),
+        ["firing", "resolved", "pending", "firing"]
+    );
+    let TimelineEntry::Firing { at: fired, .. } = timeline(0)[3].clone() else {
+        panic!("not firing");
+    };
+    assert_eq!(kinds(&timeline(fired.0)), ["pending", "firing"]);
 }
 
 #[test]

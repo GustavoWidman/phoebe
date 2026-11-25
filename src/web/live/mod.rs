@@ -309,9 +309,10 @@ impl Live {
 
         let nodes = self.peers.iter().map(|(node, prometheus)| {
             let history = history.clone();
+            let since = alert.starts_at.0;
             async move {
                 match prometheus.range(&history, from, to, step / 1_000).await {
-                    Ok(ranges) => alerts::timeline(node, &ranges, to, step),
+                    Ok(ranges) => alerts::timeline(node, &ranges, since, to, step),
                     Err(error) => {
                         log::debug!("{node} is left out of the timeline: {error:#}");
                         Vec::new()
