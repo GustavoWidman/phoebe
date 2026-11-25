@@ -6,8 +6,8 @@ phoebe is the observability app for my nix fleet. the part that exists is
 everything under the app: nix modules that collect every machine's metrics
 and logs, store them on several machines at once, and turn them into alerts,
 all generated from one registry of the fleet's machines and services. the
-`phoebe` binary serves the app's contract over a simulated fleet so far, for
-the web app to be built against.
+`phoebe` binary serves the web app, and the api it reads, over a simulated
+fleet so far.
 
 named after phoebe, the titaness of the bright moon, who married coeus. coeus
 deploys the fleet, so it seemed only fair that his wife keep an eye on it.
@@ -153,10 +153,16 @@ minutes.
 
 `phoebe web` is the app the fleet is read through: a server next to every
 node's stores, and a web app that installs on a phone. what exists of it so
-far is its contract and a simulated fleet that serves it:
+far is the web app, its contract, and a simulated fleet that serves both:
 
 ```bash
-nix develop -c cargo run -- web --fixture   # http://127.0.0.1:7980
+# the server, the simulated fleet and the built web app on http://127.0.0.1:7980
+nix build .#phoebe-web -o result-web
+nix develop -c cargo run --release -- web --fixture --web-dir result-web
+
+# or the web app from source, with hot reload on http://127.0.0.1:5173, against
+# a fixture running on 7980
+cd web && bun install && bun run dev
 ```
 
 the simulated fleet is the real one, with the same six machines, sixteen
@@ -184,6 +190,114 @@ nothing to hide.
 | `GET /api/logs/tail?machine=&unit=&service=&q=` | server-sent events: the lines that arrive |
 | `GET /api/alerts?range=<r>` | the alerts that fired within the range (24h unless given), newest first |
 | `GET /api/alerts/<id>` | an alert, each node's pending, firing and resolved, who pushed it, and the series that shows it |
+
+### the web app
+
+`web/` is a svelte 5 app built by vite, with bun as the package manager and
+`bun2nix` turning its lockfile into the `phoebe-web` package. it opens one
+`/api/stream` and keeps the latest snapshot in one store that every screen
+reads. series, log pages and alert details come from the other routes when a
+screen asks. every answer is checked against the generated types where it
+arrives, so nothing past the parser second-guesses its data.
+
+it has five screens, each its own url, so a notification for an alert opens
+straight onto `/alerts/<id>`:
+
+- **the fleet**: while anything fires, "2 things need you." and a severity band
+  per alert. once nothing does, a calm title and an all clear. then every
+  machine with its vitals (a desktop that's off shows as resting, not down),
+  every service with one dot per node that probes it, and what resolved in
+  the last day.
+- **a machine**: cpu, memory, disk, network and load over 1h, 6h, 24h or 7d,
+  with a dashed line where its alert fired, then its units and its logs.
+- **a service**: the probe map, where tapping a node charts that node's
+  latency, a row per node, the latency band across all of them, its unit and
+  its logs.
+- **an alert**: the severity header across the full width, the nodes that see
+  it, its timeline, its details, the series that shows it and its logs. a
+  resolved alert keeps the screen and drops the severity.
+- **logs**: a search and a machine filter over the live tail.
+
+on a phone each screen has a nav bar on top and a log dock at the bottom,
+which raises a sheet with the screen's logs. from 900px wide it's three
+columns: a sidebar of every alert, machine and service, the screen, and the
+live tail of the screen's logs, with tables for the long lists. `/device` is
+this device's theme (system, light or dark), and the account slot in the
+header leads there.
+
+it installs on a home screen as a violet crescent. a service worker keeps a
+copy of the build and answers every navigation from it, so the app opens
+without the network and waits for a node to answer. `phoebe web` sends the
+`.br` or `.gz` the build writes beside every text file to a browser that takes
+it.
+
+### the design system
+
+`web/design/system.md` is the design system: the colors of both themes, six
+font sizes in two families and three weights, a spacing scale, two radii and
+four rule weights, then every component and its states. an alert asks for
+attention one way only, with a severity treatment: a wash across the full
+width, a 3px bar on its leading edge and a kicker in the severity's color. a
+`page` alert, meant to reach a phone, gets the critical treatment (red, with a
+pulsing dot). an `info` alert, which only shows in the app, gets the warning
+one (amber, with a still dot). the kicker says which: `FIRING · PAGE ·
+UNITFAILED`.
+
+`web/scripts/design-gate.ts` holds the build to it. it reads the built css,
+as the minifier wrote it, and the markup of every component, and fails on any
+color, font size, family, weight, radius, spacing or rule weight the system
+doesn't list. the token blocks must match the system's word for word, give or
+take how the minifier spells a color. a value off the scale fails ci, so the
+app can't drift one hex code at a time.
+
+### checks and budgets
+
+```bash
+# unit tests: the parser over every message of contract/web.json, what the
+# screens derive from the fleet, and the design gate's own tests
+cd web && bun run test
+
+# types and formatting
+bun run check && bun run lint
+
+# the design gate and the budgets, over a fresh build
+bun run build && bun scripts/design-gate.ts && bun scripts/budget.ts
+
+# the end-to-end tests: builds phoebe and the app, then drives every screen on
+# a webkit phone (390x844) and a chromium desktop (1440x900)
+nix develop -c e2e
+
+# every screen and state, light and dark, on both, as contact sheets in web/shots
+nix develop -c shots
+```
+
+the end-to-end tests run one browser at a time, each against a `phoebe web
+--fixture` of its own, and move its clock to the state they test: the fleet
+firing and all clear, an alert opened as a notification opens it, an alert
+resolving while it's open, the machine's ranges, the probe map, log search
+and the live tail, the log sheet, the desktop's columns, the theme, and the
+shell opening offline.
+
+each screen is a chunk of its own, and `web/perf-budget.json` caps what a cold
+start on each route loads before its screen draws, gzipped: the entry, the
+screen's chunk and everything they import.
+
+| route | js | css |
+| --- | --- | --- |
+| `/` | 36 KiB | 5 KiB |
+| `/machines/<name>` | 36 KiB | 5 KiB |
+| `/services/<name>` | 38 KiB | 5 KiB |
+| `/alerts/<id>` | 36 KiB | 5 KiB |
+| `/logs` | 31 KiB | 5 KiB |
+| `/device` | 30 KiB | 5 KiB |
+
+about 16 KiB of each is svelte's runtime, which every route shares, and the
+service screen's probe map and sparklines make it the heaviest. a route
+that outgrows its line fails the check, so a heavier screen has to say so in
+the budget file.
+
+`nix flake check` builds the app and runs all of these but the end-to-end
+tests and the shots, which want a browser.
 
 ### the contract
 
@@ -221,6 +335,7 @@ can't quietly fall behind the types.
 ├── flake.nix             # the package, the modules, the checks and a dev shell
 ├── nix/
 │   ├── package.nix       # the crane build, with the tests and clippy as checks
+│   ├── web.nix           # the web app's build, with its tests, gate and budgets as checks
 │   ├── checks.nix        # every check that isn't the package's own
 │   ├── rules-check.nix   # generated config through promtool and amtool, and the rules' tests
 │   ├── test.nix          # two nodes and an agent, booted in vms
@@ -231,7 +346,19 @@ can't quietly fall behind the types.
 │       ├── nixos.nix     # nixpkgs' services and the firewall
 │       └── darwin.nix    # the launchd daemons
 ├── contract/web.json     # an example of every message the app reads
-├── web/src/lib/wire/     # their typescript types
+├── web/
+│   ├── design/system.md  # the design system, which the design gate holds the build to
+│   ├── scripts/          # the design gate, budgets, compression, icons and shots
+│   ├── src/lib/
+│   │   ├── wire/         # the typescript types, generated, and the parser
+│   │   ├── stream/       # the fleet store and the event stream under it
+│   │   ├── derive/       # what the screens show, worked out from the fleet
+│   │   ├── ui/           # the tokens, the stylesheet and the components
+│   │   ├── shell/        # the frame: sidebar and tail, or nav bar and log sheet
+│   │   └── screens/      # fleet, machine, service, alert, logs and device
+│   ├── src/service-worker/  # keeps the app opening offline
+│   ├── static/           # the manifest and the icons
+│   └── tests/e2e/        # the end-to-end tests
 └── src/
     ├── main.rs           # the binary
     └── web/
@@ -247,8 +374,9 @@ can't quietly fall behind the types.
 
 ```bash
 nix develop        # the toolchain
-nix flake check    # the package, its tests and clippy, the rule tests and the
-                   # nix-darwin module, plus the vm test on linux
+nix flake check    # the package, its tests and clippy, the web app and its checks,
+                   # the rule tests and the nix-darwin module, plus the vm test on linux
+nix develop -c lock-web   # regenerate web/.bun.nix after changing web/bun.lock
 ```
 
 the vm test boots two nodes and an agent on one network standing in for the
