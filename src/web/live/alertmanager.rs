@@ -1,4 +1,5 @@
-//! the node's Alertmanager, which holds what the whole cluster fires
+//! the node's Alertmanager, which holds what the whole cluster fires, and
+//! the notices it posts to the hook
 
 use std::{collections::BTreeMap, time::Duration};
 
@@ -23,6 +24,34 @@ pub struct ClusterAlert {
     /// resolve if no node fired it again
     #[serde(deserialize_with = "timestamp")]
     pub ends_at: Ms,
+}
+
+/// one alert of a notice Alertmanager posts to its webhook
+#[derive(Clone, Debug, PartialEq, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct NoticeAlert {
+    pub status: NoticeStatus,
+    pub fingerprint: AlertId,
+    pub labels: Labels,
+    #[serde(default)]
+    pub annotations: BTreeMap<String, String>,
+    #[serde(deserialize_with = "timestamp")]
+    pub starts_at: Ms,
+    #[serde(deserialize_with = "timestamp")]
+    pub ends_at: Ms,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum NoticeStatus {
+    Firing,
+    Resolved,
+}
+
+/// the body of a webhook post, version 4
+#[derive(Clone, Debug, PartialEq, Deserialize)]
+pub struct Notice {
+    pub alerts: Vec<NoticeAlert>,
 }
 
 /// an RFC 3339 time, as Alertmanager writes them; its zero time, which

@@ -2,6 +2,7 @@
 //! parsed into the wire types as the live source parses them
 
 mod answers;
+mod hook;
 mod record;
 
 use std::collections::{BTreeMap, HashMap};

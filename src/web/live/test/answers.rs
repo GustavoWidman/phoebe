@@ -6,7 +6,7 @@ use super::Recorded;
 use crate::web::{
     live::{
         alertmanager,
-        alerts::{self, Sources},
+        alerts::{self, NoticeLine, Sources},
         charts, logs, loki,
         prometheus::{self, Labels},
     },
@@ -309,6 +309,24 @@ fn a_chart_is_its_answer_on_the_grid() {
     for (_, lo, mid, hi) in measured {
         assert!(lo <= mid && mid <= hi, "{lo:?} {mid:?} {hi:?}");
     }
+}
+
+#[test]
+fn a_notice_line_is_found_wherever_the_logger_put_it() {
+    let notice = NoticeLine {
+        alert: AlertId::from("ae8ac1acc2b4edb0"),
+        resolved: false,
+        rule: "UnitFailed".into(),
+        summary: "lavalink failed on oracle-1".into(),
+        devices: 1,
+        delivered: 1,
+    };
+    let logged = format!(
+        "[2026-11-25T18:00:00Z INFO  phoebe::web::live::hook] {}",
+        notice.text()
+    );
+    assert_eq!(NoticeLine::find(&logged), Some(notice));
+    assert_eq!(NoticeLine::find("notice of something else"), None);
 }
 
 fn query(machine: Option<&str>, service: Option<&str>, q: Option<&str>) -> LogQuery {

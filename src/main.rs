@@ -3,7 +3,7 @@ mod web;
 use std::{net::SocketAddr, path::PathBuf};
 
 use clap::{Args, Parser, Subcommand};
-use eyre::{Result, WrapErr};
+use eyre::{Result, WrapErr, ensure};
 use log::info;
 use tokio::{
     net::TcpListener,
@@ -12,7 +12,7 @@ use tokio::{
 
 use crate::web::{
     fixture::Fixture,
-    live::{Live, registry::Registry},
+    live::{Live, hook, hook::PushSettings, registry::Registry},
     site,
     source::Source,
 };
@@ -62,6 +62,30 @@ struct WebArgs {
         conflicts_with = "fixture"
     )]
     fleet: PathBuf,
+
+    /// Where Alertmanager posts its notices, POST /hook; a loopback
+    /// address, apart from the app
+    #[arg(
+        long,
+        value_name = "ADDRESS",
+        default_value = "127.0.0.1:7981",
+        conflicts_with = "fixture"
+    )]
+    hook: SocketAddr,
+
+    /// The app's https origin, where a notification leads; pushes go out
+    /// only with it and both push files
+    #[arg(long, value_name = "URL", requires_all = ["push_key_file", "push_subscriptions_file"], conflicts_with = "fixture")]
+    origin: Option<String>,
+
+    /// The VAPID private key pushes are signed with, read at every send
+    #[arg(long, value_name = "FILE", requires = "origin")]
+    push_key_file: Option<PathBuf>,
+
+    /// The devices pushes go to, a JSON array of PushSubscription.toJSON()
+    /// objects each with a name, read at every send
+    #[arg(long, value_name = "FILE", requires = "origin")]
+    push_subscriptions_file: Option<PathBuf>,
 }
 
 #[tokio::main]
@@ -74,15 +98,32 @@ async fn main() -> Result<()> {
 
 /// serves the fleet until SIGTERM or SIGINT
 async fn web(args: WebArgs) -> Result<()> {
-    let router = if args.fixture {
+    let (router, hook) = if args.fixture {
         let fixture = Fixture::new(args.speed);
         fixture.run();
-        site::router(Source::Fixture(fixture.clone()), args.web_dir.as_deref())
-            .merge(fixture.routes())
+        let router = site::router(Source::Fixture(fixture.clone()), args.web_dir.as_deref())
+            .merge(fixture.routes());
+        (router, None)
     } else {
+        ensure!(
+            args.hook.ip().is_loopback(),
+            "the hook takes notices from this machine's Alertmanager alone, so it listens on loopback, not {}",
+            args.hook
+        );
+        let push = match (
+            args.origin,
+            args.push_key_file,
+            args.push_subscriptions_file,
+        ) {
+            (Some(origin), Some(key), Some(subscriptions)) => {
+                Some(PushSettings::new(origin, key, subscriptions)?)
+            }
+            _ => None,
+        };
         let live = Live::new(Registry::load(&args.fleet)?);
         live.run();
-        site::router(Source::Live(live), args.web_dir.as_deref())
+        let router = site::router(Source::Live(live), args.web_dir.as_deref());
+        (router, Some((args.hook, hook::router(push))))
     };
 
     let listener = bind(args.listen).await?;
@@ -92,12 +133,26 @@ async fn web(args: WebArgs) -> Result<()> {
         "the fleet"
     };
     info!("serving {what} on http://{}", args.listen);
+    let hook = async {
+        match hook {
+            Some((address, router)) => {
+                let listener = bind(address).await?;
+                info!("taking alertmanager's notices on http://{address}/hook");
+                axum::serve(listener, router)
+                    .await
+                    .wrap_err("the hook stopped")
+            }
+            None => std::future::pending().await,
+        }
+    };
+
     // streams never end on their own, so a signal stops serving rather than
     // waiting for them
     let mut terminate = signal(SignalKind::terminate())?;
     let mut interrupt = signal(SignalKind::interrupt())?;
     tokio::select! {
         served = axum::serve(listener, router).into_future() => served.wrap_err("the site stopped"),
+        hooked = hook => hooked,
         _ = terminate.recv() => Ok(()),
         _ = interrupt.recv() => Ok(()),
     }
