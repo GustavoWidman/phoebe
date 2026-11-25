@@ -2,12 +2,12 @@
 
 a lamp for a nix fleet, so i can see what's on fire.
 
-phoebe is the observability app for my nix fleet. the part that exists is
-everything under the app: nix modules that collect every machine's metrics
-and logs, store them on several machines at once, and turn them into alerts,
-all generated from one registry of the fleet's machines and services. the
-`phoebe` binary serves the web app, and the api it reads, over a simulated
-fleet so far.
+phoebe is the observability app for my nix fleet. underneath it are nix
+modules that collect every machine's metrics and logs, store them on several
+machines at once, and turn them into alerts, all generated from one registry
+of the fleet's machines and services. on top, the `phoebe` binary serves a
+web app over those stores, from every machine that keeps them, and pushes an
+alert that pages to my phone.
 
 named after phoebe, the titaness of the bright moon, who married coeus. coeus
 deploys the fleet, so it seemed only fair that his wife keep an eye on it.
@@ -48,7 +48,7 @@ services.phoebe = {
       metrics = { port = 9200; path = "/metrics"; }; # or null
     };
   };
-  alerting.webhook = "http://127.0.0.1:8080/alerts";
+  web.enable = true; # on the nodes: the app, see below
 };
 ```
 
@@ -64,8 +64,8 @@ services.phoebe = {
   the ports that start with TLS), and `dns` (a server, plus the `query` it
   should answer).
 
-every machine writes the registry to `/etc/phoebe/fleet.json`, for the app to
-draw from.
+every machine writes the registry to `/etc/phoebe/fleet.json`, with its own
+name as `machine`, for the app to draw from.
 
 ## what runs where
 
@@ -142,7 +142,8 @@ only shows up in the app.
 | `LogsBacklog` | info | a machine's buffer for one node is over half full for 15 minutes |
 
 alertmanager groups notifications by alert, machine and service, and posts
-them to `alerting.webhook` in its webhook format. while `MachineDown` fires
+them to `alerting.webhook` in its webhook format. on a node running the app,
+that's the app's hook unless set otherwise. while `MachineDown` fires
 for a machine, it holds back that machine's `ServiceUnreachable`, `UnitFailed`,
 `NodeUnhealthy` and `CertExpiring`, so a machine going down is one
 notification. that only works because `MachineDown` fires first: its scrapes
@@ -152,8 +153,111 @@ minutes.
 ## the app
 
 `phoebe web` is the app the fleet is read through: a server next to every
-node's stores, and a web app that installs on a phone. what exists of it so
-far is the web app, its contract, and a simulated fleet that serves both:
+node's stores, and a web app that installs on a phone. each node runs its
+own, and each reads its own node's prometheus, loki and alertmanager, so any
+one node up is enough to see the fleet.
+
+```nix
+# on every node
+services.phoebe.web = {
+  enable = true;
+  origin = "https://phoebe.example.com";
+  push = {
+    vapidKeyFile = "/run/agenix/phoebe-vapid";
+    subscriptionsFile = "/run/agenix/phoebe-push-subscriptions";
+  };
+};
+```
+
+on nixos that's a `phoebe-web` systemd service, as a user of its own, in a
+sandbox with nothing to write to. on darwin it's a launchd daemon running as
+`_phoebe`, logging to `/var/log/phoebe-web.log`. either way it runs:
+
+```bash
+phoebe web --fleet /etc/phoebe/fleet.json \
+  --listen 127.0.0.1:7980 --hook 127.0.0.1:7981 --web-dir <phoebe-web> \
+  --origin https://phoebe.example.com \
+  --push-key-file /run/agenix/phoebe-vapid \
+  --push-subscriptions-file /run/agenix/phoebe-push-subscriptions
+```
+
+both listen on loopback alone. the app has no sign-in, so only the machine
+itself gets to reach it. the hook listens apart from the app, so it stays on
+loopback whatever address the app is given. the push key and the
+subscription list must be readable by the app's user, `phoebe-web` on nixos
+and `_phoebe` on darwin (agenix's `owner`).
+
+### where the answers come from
+
+every 15 seconds a task asks the node's prometheus for every series of the
+snapshot at once, the alertmanager for what the cluster fires, and every
+node's prometheus, over the tailnet with two seconds to answer, which of
+those alerts it fires itself. it builds one snapshot of the fleet from that
+and sends it to every open stream, unless nothing but the clock changed. a
+node that doesn't answer in time is left out of who sees an alert, not
+counted as not seeing it.
+
+- **machines** are up while their node exporter answers. one that doesn't is
+  down if it's `alwaysOn`, and resting if it isn't. since when comes from the
+  last minute it did the other thing within a week. vitals are the last
+  scrape, hardware is the last scrape within a week, so a resting desktop
+  keeps its specs.
+- **units** come from the systemd collector on nixos and the launchd
+  reporter on darwin, read as the same states. a failed unit fails from when
+  its `UnitFailed` went pending.
+- **probes** are one view per node, from `probe_success` and
+  `probe_duration_seconds` labelled with the node that ran them.
+- **alerts** are the cluster's firing ones, then those that resolved in the
+  last day, which come from this node's `ALERTS` series. an alert's id is
+  alertmanager's fingerprint, which phoebe works out from an `ALERTS`
+  series' labels the same way, so both name the same alert.
+
+every PromQL phoebe sends lives in one table, `src/web/live/promql.rs`:
+
+| series | PromQL, roughly |
+| --- | --- |
+| up, last up, last down | `up{job="node"}`, and `max_over_time(timestamp(up == 1 or 0)[7d:1m])` |
+| boot, arch, cores, memory, disk size | `node_boot_time_seconds`, `node_uname_info`, `node_cpu_seconds_total`, `node_memory_*`, `node_filesystem_size_bytes{mountpoint="/"}`, the last within a week |
+| cpu | the working modes' rate over every mode's, by machine |
+| mem | `MemAvailable` over `MemTotal` on linux, app, wired and compressed memory over the total on darwin |
+| disk, load | `/`'s free over its size, `node_load1` |
+| rx, tx | `node_network_*_bytes_total` of the machine's own interfaces, no tunnels or bridges |
+| units | `node_systemd_unit_state` and `phoebe_launchd_job_failed`, `ALERTS_FOR_STATE{alertname="UnitFailed"}` |
+| stores | `up{job=~"prometheus\|loki\|alertmanager\|blackbox"}` |
+| probes | `probe_success`, `probe_duration_seconds`, `probe_ssl_earliest_cert_expiry` |
+| latency | the slowest probe of a service from each node, in ms, unless one fails |
+| alerts | `ALERTS`, `ALERTS{alertstate="firing"}` and its `max_over_time` |
+
+the other routes ask when a browser does. a chart is a range query of about
+240 points. a log page is loki's `query_range` over the labels the data
+plane sets (`machine`, `unit` and `level` from the journal, `machine` and
+`file` from a darwin log file), and the tail bridges loki's tail websocket.
+the journal files most programs' lines at info whatever they say, so a line
+that names its own level (`level=warn`, `WARN`, `[error]`) is shown at that
+one. an alert's timeline is every node's `ALERTS` of that alert over its
+episode, plus who pushed it.
+
+### pushes
+
+alertmanager posts every notice to `POST /hook` on the hook's listener. for
+each alert of a notice phoebe logs one line, `notice {"alert":...}` with the
+alert's id, whether it resolved, its summary, and how many devices took the
+push. vector ships that line to every node's loki like any other, which is
+how every node's timeline shows who pushed what without asking its peers.
+
+only `severity = page` alerts push. phoebe reads the VAPID key and the
+subscription list at every send, so editing them needs no restart, and
+sends a declarative web push through gjallar: the summary as the title,
+`<origin>/alerts/<id>` as the place a tap opens, and the alert's id as the
+tag, so the resolution replaces the firing notice on the phone. the cluster
+sends each notice from one node, so one phoebe pushes it. one that can't read
+its key or its list answers 500, alertmanager tries again, and another node
+sends it instead.
+
+### the simulated fleet
+
+`phoebe web --fixture` serves the same routes over a simulated fleet, for
+working on the web app with no fleet at all:
 
 ```bash
 # the server, the simulated fleet and the built web app on http://127.0.0.1:7980
@@ -180,6 +284,8 @@ is what tests do. `--web-dir` serves a built web app beside the api. anyone
 who reaches the listening address gets in: it's a made-up fleet, it has
 nothing to hide.
 
+the routes, from either:
+
 | route | answers |
 | --- | --- |
 | `GET /api/hello` | the build, the schema version and the sign-in addresses |
@@ -190,6 +296,7 @@ nothing to hide.
 | `GET /api/logs/tail?machine=&unit=&service=&q=` | server-sent events: the lines that arrive |
 | `GET /api/alerts?range=<r>` | the alerts that fired within the range (24h unless given), newest first |
 | `GET /api/alerts/<id>` | an alert, each node's pending, firing and resolved, who pushed it, and the series that shows it |
+| `POST /hook` | alertmanager's notices, on the hook's own loopback listener; not served by the fixture |
 
 ### the web app
 
@@ -318,6 +425,15 @@ can't quietly fall behind the types.
   tailnet address exits until tailscaled brings the address up, and launchd
   starts it again every 10 seconds until then. `/var/log/phoebe-<name>.log`
   says so, loudly.
+- **the app has no sign-in.** it listens on loopback alone until it does,
+  so reaching it means being on the node, or tunnelling to it.
+- **a resolved alert's summary can be lost.** `ALERTS` keeps labels, not
+  annotations. phoebe remembers the summary of every alert it saw fire, and
+  looks up the notice line of one it didn't. an alert alertmanager held
+  back, so never sent, that resolved before phoebe restarted shows as its
+  rule and its machine.
+- **a chart starts where the node's prometheus does.** a node that lost its
+  data, or joined last week, draws nothing before then, the same as a gap.
 - **the firewall is the only fence on nixos.** the programs listen on every
   interface there, so a machine with `networking.firewall.enable = false`
   serves its metrics to whoever asks.
@@ -339,12 +455,14 @@ can't quietly fall behind the types.
 │   ├── checks.nix        # every check that isn't the package's own
 │   ├── rules-check.nix   # generated config through promtool and amtool, and the rules' tests
 │   ├── test.nix          # two nodes and an agent, booted in vms
+│   ├── fake-push.py      # the push service the vm test pushes to
 │   ├── darwin-check.nix  # the nix-darwin module's daemons, evaluated on macos
 │   └── modules/
 │       ├── common.nix    # services.phoebe and the registry, for both platforms
 │       ├── config.nix    # every program's configuration, generated from the registry
 │       ├── nixos.nix     # nixpkgs' services and the firewall
-│       └── darwin.nix    # the launchd daemons
+│       ├── darwin.nix    # the launchd daemons
+│       └── web/          # services.phoebe.web, and its service on each platform
 ├── contract/web.json     # an example of every message the app reads
 ├── web/
 │   ├── design/system.md  # the design system, which the design gate holds the build to
@@ -366,6 +484,8 @@ can't quietly fall behind the types.
         ├── query.rs      # what it asks, parsed at the edge
         ├── site.rs       # the routes
         ├── source.rs     # where their answers come from
+        ├── live/         # the real fleet: the stores' clients, the series table,
+        │                 # the snapshot, the alerts, the hook and recorded answers
         ├── fixture/      # the simulated fleet and its clock
         └── test/         # the contract, the generated types and the routes
 ```
@@ -380,12 +500,22 @@ nix develop -c lock-web   # regenerate web/.bun.nix after changing web/bun.lock
 ```
 
 the vm test boots two nodes and an agent on one network standing in for the
-tailnet. it checks that both prometheus scrape all three machines, that a
+tailnet, with the app on both nodes and a push service on each node's
+loopback. it checks that both prometheus scrape all three machines, that
+each app streams every machine up and every probe from both nodes, that a
 line logged on the agent reaches both lokis, that lines logged while one loki
-is stopped reach it once it starts again, that a failed unit reaches the
-webhook exactly once from two alertmanagers, and that switching a node off
-makes the other one fire `MachineDown` for it. it waits out the real rule
-durations, so bring a coffee.
+is stopped reach it once it starts again, that a failed unit fires in both
+apps seen by both nodes and pushes exactly once, signed and encrypted, that
+both apps' timelines show who pushed it, and that switching a node off makes
+the other one fire `MachineDown` for it and push that. it waits out the real
+rule durations, so bring a coffee.
+
+the source's unit tests parse answers recorded from a real node's stores, in
+`src/web/live/test/recorded`. to record them again from a node:
+
+```bash
+PHOEBE_RECORD=/etc/phoebe/fleet.json nix develop -c cargo test record -- --ignored
+```
 
 every pull request runs `nix flake check` on x86_64-linux, kvm and vm test
 included, and builds every other check on aarch64-linux and aarch64-darwin.
@@ -406,5 +536,5 @@ from the cache and none of them compiles rust.
 
 ---
 
-the binary only serves a fleet it made up so far. the lamp is wired and lit,
-it's just pointed at a painting of the room.
+the lamp is lit and pointed at the room. the first thing it found was a
+laptop failing a job nobody had noticed.
