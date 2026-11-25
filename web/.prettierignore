@@ -1,0 +1,9 @@
+bun.lock
+.bun.nix
+/build
+/static/*.png
+/static/icons
+src/lib/wire/types.ts
+/test-results
+/shots
+design/system.md
