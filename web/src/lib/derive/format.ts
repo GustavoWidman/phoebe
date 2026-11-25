@@ -33,6 +33,12 @@ export const hms = (t: Ms) => clockS.format(t);
 /** Wed 25 Nov */
 export const date = (t: Ms) => day.format(t).replace(',', '');
 
+const dayMonth = new Intl.DateTimeFormat('en-GB', { day: 'numeric', month: 'short' });
+
+/** 24 Nov, when `t` is not on the day of `now`; nothing on that day */
+export const otherDay = (t: Ms, now: Ms) =>
+	dayKey.format(t) === dayKey.format(now) ? null : dayMonth.format(t);
+
 /** `hm`, with the day before it when `t` is not on the day of `now` */
 export function when(t: Ms, now: Ms): string {
 	if (dayKey.format(t) === dayKey.format(now)) return hm(t);

@@ -179,7 +179,8 @@ the nodes out in a row above the service; desktop in a column left of it.
 **Key-value list**. Rows of key (13 mute, 96px column) and value (15 ink, or 13 mono for machine
 values), hairline between.
 
-**Log line**. Time (13 mono faint), host (desktop only, mono ink2), unit (mono mute), text (mono
+**Log line**. Time (13 mono faint, with the day and month above it, `24 Nov`, on a line from
+another day than the fleet's today), host (desktop only, mono ink2), unit (mono mute), text (mono
 ink2). One size, 13. States: info, warn (text `warn-ink`), err (text `bad`), match (search hit
 on `acc-w`), fresh (fades in once).
 
