@@ -8,8 +8,10 @@ import { device } from './device.ts';
 
 /** `fetch`, signed with this device's session; a 401 means there is none the server takes */
 export async function signed(url: string, init: RequestInit = {}): Promise<Response> {
+	// the path and query exactly as the request line carries them, an empty `?` included
 	const at = new URL(url, location.href);
-	const proof = await device.headers(init.method ?? 'GET', at.pathname + at.search);
+	const path = at.href.slice(at.origin.length).replace(/#.*$/, '');
+	const proof = await device.headers(init.method ?? 'GET', path);
 	return fetch(url, {
 		cache: 'no-store',
 		...init,
