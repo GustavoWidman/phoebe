@@ -1,6 +1,7 @@
 # two nodes and a machine that only sends, on one network standing in for
-# the tailnet. the agent runs a demo unit, a web server every node probes,
-# and the webhook receiver both alertmanagers post to.
+# the tailnet. the agent runs a demo unit and a web server every node
+# probes. each node runs the app, which its alertmanager posts to, and a
+# push service on loopback that the app pushes to.
 { self }:
 let
   names = [
@@ -21,7 +22,6 @@ let
       services.phoebe = {
         enable = true;
         interface = "eth1";
-        alerting.webhook = "http://agent:8080/";
         fleet = {
           nodes = [
             "node1"
@@ -58,8 +58,45 @@ let
 
   node = machine (
     { pkgs, ... }:
+    let
+      fakePush = pkgs.writers.writePython3Bin "fake-push" {
+        libraries = [ pkgs.python3Packages.cryptography ];
+        flakeIgnore = [ "E501" ];
+      } (builtins.readFile ./fake-push.py);
+    in
     {
       environment.systemPackages = [ pkgs.jq ];
+
+      services.phoebe.web = {
+        enable = true;
+        origin = "https://phoebe.test";
+        push = {
+          # a key for this test alone
+          vapidKeyFile = "${pkgs.writeText "vapid" "E-gWtH0VMhoWtOEVcR7eZFJ_04w6zsdfgTUNex6ZxLM"}";
+          subscriptionsFile = "${pkgs.writeText "subscriptions.json" (
+            builtins.toJSON [
+              {
+                name = "phone";
+                endpoint = "http://127.0.0.1:8088/push/phone";
+                # the browser of RFC 8291's appendix A, whose private key
+                # the fake push service holds
+                keys = {
+                  p256dh = "BCVxsr7N_eNgVRqvHtD0zTZsEc6-VV-JvLexhqUzORcxaOzi6-AYWXvTBHm4bjyPjs7Vd8pZGH6SRpkNtoIAiw4";
+                  auth = "BTBZMqHH6r4Tts7J_aSIgg";
+                };
+              }
+            ]
+          )}";
+        };
+      };
+
+      systemd.services.fake-push = {
+        wantedBy = [ "multi-user.target" ];
+        serviceConfig = {
+          ExecStart = "${fakePush}/bin/fake-push /var/lib/fake-push/seen.jsonl";
+          StateDirectory = "fake-push";
+        };
+      };
     }
   );
 in
@@ -85,31 +122,7 @@ in
           };
         };
 
-        # writes every request body it gets on a line of /var/lib/receiver/posts
-        systemd.services.receiver = {
-          wantedBy = [ "multi-user.target" ];
-          serviceConfig.StateDirectory = "receiver";
-          script = ''
-            exec ${pkgs.python3}/bin/python3 ${pkgs.writeText "receiver.py" ''
-              import http.server, json
-
-              class Receiver(http.server.BaseHTTPRequestHandler):
-                  def do_POST(self):
-                      body = self.rfile.read(int(self.headers["Content-Length"]))
-                      with open("/var/lib/receiver/posts", "a") as posts:
-                          posts.write(json.dumps(json.loads(body)) + "\n")
-                      self.send_response(200)
-                      self.end_headers()
-
-              http.server.HTTPServer(("", 8080), Receiver).serve_forever()
-            ''}
-          '';
-        };
-
-        networking.firewall.allowedTCPPorts = [
-          8000
-          8080
-        ];
+        networking.firewall.allowedTCPPorts = [ 8000 ];
         environment.systemPackages = [ pkgs.jq ];
       }
     );
@@ -140,19 +153,27 @@ in
             timeout=timeout,
         )
 
-    def posts(alertname, status="firing"):
-        """the webhook posts about an alert the receiver got"""
-        lines = agent.succeed("cat /var/lib/receiver/posts 2>/dev/null || true").splitlines()
-        return [
-            post for post in map(json.loads, lines)
-            if post["status"] == status and post["commonLabels"].get("alertname") == alertname
-        ]
+    def streamed(node, test, timeout=300):
+        """waits until jq's test holds for the first snapshot the node's app streams"""
+        node.wait_until_succeeds(
+            "curl -sN --max-time 3 localhost:7980/api/stream | sed -n 's/^data: //p' | head -n 1 "
+            + f"| jq -e {shlex.quote(test)}",
+            timeout=timeout,
+        )
+
+    def pushes():
+        """every push the nodes' push services got, with the node that got it"""
+        seen = []
+        for node in nodes:
+            lines = node.succeed("cat /var/lib/fake-push/seen.jsonl 2>/dev/null || true").splitlines()
+            seen += [(node.name, json.loads(line)) for line in lines]
+        return seen
 
     start_all()
     for node in nodes:
-        for unit in ["prometheus", "loki", "alertmanager", "prometheus-blackbox-exporter"]:
+        for unit in ["prometheus", "loki", "alertmanager", "prometheus-blackbox-exporter", "phoebe-web", "fake-push"]:
             node.wait_for_unit(f"{unit}.service")
-    for unit in ["vector", "prometheus-node-exporter", "demo", "web", "receiver"]:
+    for unit in ["vector", "prometheus-node-exporter", "demo", "web"]:
         agent.wait_for_unit(f"{unit}.service")
 
     with subtest("both prometheus scrape every machine, and see both nodes' probes"):
@@ -160,6 +181,16 @@ in
             prometheus(node, 'up{job="node"} == 1', "map(.metric.machine) | sort == " + json.dumps(sorted(["agent", "node1", "node2"])))
             prometheus(node, 'up{job="vector"} == 1', "length == 3")
             prometheus(node, 'probe_success{service="web"} == 1', 'map(.metric.prober) | sort == ["node1", "node2"]')
+
+    with subtest("each node's app streams every machine up, and every probe from both nodes"):
+        for node in nodes:
+            streamed(
+                node,
+                '([.machines[].state.kind] | all(. == "up"))'
+                + ' and ([.nodes[] | .prometheus and .loki and .alertmanager and .blackbox] | all)'
+                + ' and ([.services[].probes[].views | map(.node)] | all(. == ["node1", "node2"]))'
+                + ' and ([.services[].unit.state] | all(. == "active"))',
+            )
 
     with subtest("a line logged on the agent reaches both lokis"):
         agent.succeed("logger -t phoebe-test reaches-both")
@@ -176,24 +207,54 @@ in
         node2.wait_for_unit("loki.service")
         logged(node2, "while-node2-was-down")
 
-    with subtest("a failed unit reaches the webhook once, from two alertmanagers"):
+    with subtest("a failed unit fires, seen by both nodes, and pushes once"):
         for node in nodes:
             node.wait_until_succeeds(
                 "curl -sf localhost:9093/api/v2/status | jq -e '.cluster.peers | length == 2'"
             )
         agent.succeed("systemctl kill --signal=KILL demo.service")
         agent.wait_until_succeeds("systemctl is-failed demo.service")
-        agent.wait_until_succeeds(
-            "jq -e 'select(.status == \"firing\" and .commonLabels.alertname == \"UnitFailed\")' /var/lib/receiver/posts",
-            timeout=300,
-        )
+        for node in nodes:
+            streamed(
+                node,
+                '.alerts | map(select(.rule == "UnitFailed" and .service == "demo"'
+                + ' and .state.kind == "firing" and .seen_by == ["node1", "node2"])) | length == 1',
+            )
+        alert = json.loads(node1.succeed(
+            "curl -sf localhost:7980/api/alerts | jq -c 'map(select(.service == \"demo\"))[0]'"
+        ))
+        assert alert["summary"] == "demo failed on agent", alert
+
+        for _ in range(60):
+            if pushes():
+                break
+            node1.sleep(5)
         # the second alertmanager in the cluster waits 15 seconds for the
         # first one's notice before it would send its own
-        agent.sleep(60)
-        sent = posts("UnitFailed")
+        node1.sleep(60)
+        sent = pushes()
         assert len(sent) == 1, sent
-        labels = sent[0]["commonLabels"]
-        assert (labels["service"], labels["severity"], labels["machine"]) == ("demo", "page", "agent"), labels
+        by, push = sent[0]
+        assert push["path"] == "/push/phone", push
+        assert push["claims"]["aud"] == "http://127.0.0.1:8088", push
+        assert push["claims"]["sub"] == "https://phoebe.test", push
+        assert (push["ttl"], push["urgency"]) == ("86400", "high"), push
+        assert push["topic"], push
+        notification = push["message"]["notification"]
+        assert notification["navigate"] == f"https://phoebe.test/alerts/{alert['id']}", notification
+        assert notification["tag"] == alert["id"], notification
+        assert notification["title"] == "demo failed on agent", notification
+
+    with subtest("both nodes' timelines show who pushed it, from their own loki"):
+        notified = (
+            '.timeline | map(select(.kind == "notified" and .resolved == false'
+            + f' and .by == "{by}")) | length == 1'
+        )
+        for node in nodes:
+            node.wait_until_succeeds(
+                f"curl -sf localhost:7980/api/alerts/{alert['id']} | jq -e {shlex.quote(notified)}",
+                timeout=120,
+            )
 
     with subtest("with one node off, the other fires MachineDown for it"):
         node2.crash()
@@ -203,8 +264,8 @@ in
             'map(.metric.machine) == ["node2"]',
             timeout=600,
         )
-        agent.wait_until_succeeds(
-            "jq -e 'select(.status == \"firing\" and .commonLabels.alertname == \"MachineDown\")' /var/lib/receiver/posts",
+        node1.wait_until_succeeds(
+            "jq -e 'select(.message.notification.title == \"node2 is down\")' /var/lib/fake-push/seen.jsonl",
             timeout=120,
         )
   '';
