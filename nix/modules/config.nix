@@ -384,6 +384,8 @@ let
       ingestion_burst_size_mb = 32;
       per_stream_rate_limit = "8MB";
       per_stream_rate_limit_burst = "16MB";
+      # streams are a machine, a unit and a level, a few hundred per machine
+      max_global_streams_per_user = 20000;
     };
     analytics.reporting_enabled = false;
   };
