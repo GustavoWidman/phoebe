@@ -4,7 +4,10 @@
   self,
   nix-darwin,
 }:
-lib.optionalAttrs pkgs.stdenv.hostPlatform.isLinux {
+{
+  rules = import ./rules-check.nix { inherit pkgs lib self; };
+}
+// lib.optionalAttrs pkgs.stdenv.hostPlatform.isLinux {
   nixos = pkgs.testers.runNixOSTest (import ./test.nix { inherit self; });
 }
 // lib.optionalAttrs pkgs.stdenv.hostPlatform.isDarwin {
