@@ -1,6 +1,8 @@
 /**
  * A `phoebe web --fixture` of the worker's own, serving the built app, and the test's way to
- * move its clock. The fixture starts firing (t = 0) and is all clear from t = 1080 on.
+ * move its clock. The fixture starts firing (t = 0) and is all clear from t = 1080 on. It lets
+ * anyone read the fleet, unless a test file asks for `signin`: then it asks its readers to sign
+ * in, as a node does, and signs in whoever asks on its own address.
  */
 import { spawn, type ChildProcess } from 'node:child_process';
 import { resolve } from 'node:path';
@@ -20,14 +22,16 @@ type Phoebe = {
 const BINARY = process.env.PHOEBE ?? resolve(import.meta.dirname, '../../../target/release/phoebe');
 const BUILD = resolve(import.meta.dirname, '../../build');
 
-export const test = base.extend<{ fleet: Phoebe }, { phoebe: Phoebe }>({
+export const test = base.extend<{ fleet: Phoebe }, { phoebe: Phoebe; signin: boolean }>({
+	signin: [false, { scope: 'worker', option: true }],
 	phoebe: [
-		async ({}, use, info) => {
+		async ({ signin }, use, info) => {
 			const port = 7700 + info.workerIndex;
 			const base = `http://127.0.0.1:${port}`;
+			const args = ['web', '--fixture', '--speed', '0', '--listen', `127.0.0.1:${port}`];
 			const server: ChildProcess = spawn(
 				BINARY,
-				['web', '--fixture', '--speed', '0', '--listen', `127.0.0.1:${port}`, '--web-dir', BUILD],
+				[...args, '--web-dir', BUILD, ...(signin ? ['--signin'] : [])],
 				{ stdio: 'ignore' }
 			);
 			for (let i = 0; ; i++) {
