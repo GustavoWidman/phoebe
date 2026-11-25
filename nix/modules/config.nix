@@ -418,7 +418,13 @@ let
       + (
         if journald then
           ''
-            .unit = string(._SYSTEMD_UNIT) ?? string(.SYSLOG_IDENTIFIER) ?? "unknown"
+            # one stream per kind of unit rather than per instance: every
+            # login is a session-<n>.scope and every deploy a coeus-job-<n>.service
+            unit = string(._SYSTEMD_UNIT) ?? string(.SYSLOG_IDENTIFIER) ?? "unknown"
+            unit = replace(unit, r'^run-[a-z]?[0-9a-f]+\.(?P<kind>service|scope)$', "run.$kind")
+            unit = replace(unit, r'-[0-9]+\.(?P<kind>service|scope)$', ".$kind")
+            unit = replace(unit, r'@[^.]*\.(?P<kind>service|scope)$', "@.$kind")
+            .unit = unit
             priority = to_int(.PRIORITY) ?? 6
             .level = to_syslog_level(priority) ?? "info"
           ''

@@ -81,7 +81,11 @@ every machine runs the agent:
   sink per node, and each sink has a disk buffer of its own
   (`logs.bufferSize`, 512 MiB). a node that's down holds up nothing but its
   own backlog, and gets all of it once it's back. a buffer that fills drops
-  the newest lines for that node only.
+  the newest lines for that node only. on nixos each line is labelled with
+  its machine, its level and its unit, where instances of one unit share a
+  label: every `session-<n>.scope` is `session.scope`, every
+  `coeus-job-<n>.service` is `coeus-job.service`, every `user@<uid>.service`
+  is `user@.service`.
 
 every node also runs:
 
