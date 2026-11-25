@@ -29,6 +29,7 @@
       { self, flake-parts-lib, ... }:
       let
         common = flake-parts-lib.importApply ./nix/modules/common.nix { inherit self; };
+        web = flake-parts-lib.importApply ./nix/modules/web/common.nix { inherit self; };
       in
       {
         # nixpkgs no longer evaluates for x86_64-darwin
@@ -44,11 +45,15 @@
         flake = {
           nixosModules.default.imports = [
             common
+            web
             ./nix/modules/nixos.nix
+            ./nix/modules/web/nixos.nix
           ];
           darwinModules.default.imports = [
             common
+            web
             ./nix/modules/darwin.nix
+            ./nix/modules/web/darwin.nix
           ];
         };
 

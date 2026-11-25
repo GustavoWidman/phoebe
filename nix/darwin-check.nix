@@ -38,10 +38,11 @@ let
   };
 
   system =
-    hostName:
+    hostName: extra:
     (nix-darwin.lib.darwinSystem {
       modules = [
         self.darwinModules.default
+        extra
         {
           nixpkgs.hostPlatform = pkgs.stdenv.hostPlatform.system;
           system.stateVersion = 6;
@@ -72,7 +73,7 @@ let
       ) daemons;
       user = if config.users.users ? _phoebe then config.users.users._phoebe.uid else null;
       fleet = config.environment.etc."phoebe/fleet.json".text;
-      inherit (config.services.phoebe.generated) vector loki;
+      inherit (config.services.phoebe.generated) vector loki alertmanager;
       # nix-darwin's own module runs it from a script
       exporter = { inherit (config.services.prometheus.exporters.node) listenAddress port extraFlags; };
     };
@@ -81,8 +82,21 @@ let
 in
 pkgs.runCommandLocal "phoebe-darwin-module"
   {
-    node = json (facts (system "altar"));
-    agent = json (facts (system "laptop"));
+    node = json (
+      facts (
+        system "altar" {
+          services.phoebe.web = {
+            enable = true;
+            origin = "https://phoebe.example.com";
+            push = {
+              vapidKeyFile = "/run/agenix/phoebe-vapid";
+              subscriptionsFile = "/run/agenix/phoebe-push-subscriptions";
+            };
+          };
+        }
+      )
+    );
+    agent = json (facts (system "laptop" { }));
     passAsFile = [
       "node"
       "agent"
@@ -94,17 +108,17 @@ pkgs.runCommandLocal "phoebe-darwin-module"
 
     jq -e '.failed == []' $node $agent
 
-    # the node runs every store, the agent none
+    # the node runs every store and the app, the agent none
     jq -e '.daemons | keys == [
       "phoebe-alertmanager", "phoebe-blackbox", "phoebe-launchd-state", "phoebe-loki",
-      "phoebe-prometheus", "phoebe-vector", "prometheus-node-exporter"
+      "phoebe-prometheus", "phoebe-vector", "phoebe-web", "prometheus-node-exporter"
     ]' $node
     jq -e '.daemons | keys == ["phoebe-launchd-state", "phoebe-vector", "prometheus-node-exporter"]' $agent
     jq -e '.user == 472' $node
     jq -e '.user == null' $agent
 
-    # the stores run as _phoebe, vector and the job reporter as root
-    jq -e '[.daemons | to_entries[] | select(.key | test("prometheus$|alertmanager|loki|blackbox"))
+    # the stores and the app run as _phoebe, vector and the job reporter as root
+    jq -e '[.daemons | to_entries[] | select(.key | test("prometheus$|alertmanager|loki|blackbox|web"))
       | select(.key != "prometheus-node-exporter") | .value.UserName] | unique == ["_phoebe"]' $node
     jq -e '[.daemons["phoebe-vector", "phoebe-launchd-state"].UserName] == [null, null]' $node
 
@@ -123,6 +137,11 @@ pkgs.runCommandLocal "phoebe-darwin-module"
     args $node phoebe-alertmanager | grep -qF -- '--cluster.peer=100.64.0.1:9094'
     ! args $node phoebe-alertmanager | grep -qF -- '--cluster.peer=100.64.0.2'
     args $node phoebe-blackbox | grep -qF -- '--web.listen-address=100.64.0.2:9115'
+    # the app and its hook stay on loopback, and alertmanager posts to the hook
+    args $node phoebe-web | grep -qF -- '--listen 127.0.0.1:7980 --hook 127.0.0.1:7981'
+    args $node phoebe-web | grep -qF -- '--origin https://phoebe.example.com --push-key-file /run/agenix/phoebe-vapid'
+    jq -e '.alertmanager.receivers[0].webhook_configs == [{url: "http://127.0.0.1:7981/hook", send_resolved: true}]' $node
+    jq -e '.daemons["phoebe-web"].StandardOutPath == "/var/log/phoebe-web.log"' $node
     jq -e '.exporter == {listenAddress: "100.64.0.2", port: 9100,
       extraFlags: ["--collector.textfile.directory=/var/lib/phoebe/textfile"]}' $node
     jq -e '.exporter.listenAddress == "100.64.0.3"' $agent
@@ -136,6 +155,7 @@ pkgs.runCommandLocal "phoebe-darwin-module"
           {key: "loki_oracle-1", endpoint: "http://100.64.0.1:3100", buffer: "disk"}]' $agent
 
     jq -e '.fleet | fromjson | .machines.laptop == {os: "darwin", alwaysOn: false, address: "100.64.0.3"}' $node
+    jq -e '.fleet | fromjson | .machine == "altar"' $node
 
     mkdir -p $out/plists
     for daemon in $(jq -r '.plists | keys[]' $node); do
