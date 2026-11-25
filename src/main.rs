@@ -121,7 +121,7 @@ async fn web(args: WebArgs) -> Result<()> {
             _ => None,
         };
         let live = Live::new(Registry::load(&args.fleet)?);
-        live.run();
+        live.run().await;
         let router = site::router(Source::Live(live), args.web_dir.as_deref());
         (router, Some((args.hook, hook::router(push))))
     };

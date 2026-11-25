@@ -112,28 +112,35 @@ impl Live {
         })
     }
 
-    /// builds a snapshot now and at every tick after, publishing each that
-    /// differs from the last in more than its moment
-    pub fn run(self: &Arc<Self>) {
+    /// builds a snapshot now, before anyone can read the fleet, then at
+    /// every tick after, publishing each that differs from the last in more
+    /// than its moment
+    pub async fn run(self: &Arc<Self>) {
+        self.publish().await;
         let live = self.clone();
         tokio::spawn(async move {
             let mut ticks = tokio::time::interval(TICK);
             ticks.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Delay);
+            ticks.tick().await;
             loop {
                 ticks.tick().await;
-                let snapshot = live.snapshot().await;
-                live.fleet.send_if_modified(|published| {
-                    let moved = Snapshot {
-                        at: published.at,
-                        ..snapshot.clone()
-                    };
-                    let changed = **published != moved;
-                    if changed {
-                        *published = Arc::new(snapshot);
-                    }
-                    changed
-                });
+                live.publish().await;
             }
+        });
+    }
+
+    async fn publish(&self) {
+        let snapshot = self.snapshot().await;
+        self.fleet.send_if_modified(|published| {
+            let moved = Snapshot {
+                at: published.at,
+                ..snapshot.clone()
+            };
+            let changed = **published != moved;
+            if changed {
+                *published = Arc::new(snapshot);
+            }
+            changed
         });
     }
 
