@@ -3,10 +3,18 @@ name: check
 on:
   pull_request:
     types: [opened, synchronize, reopened]
+  # the release reruns the commit check, and the nix check unless a pull
+  # request already checked the same tree
+  workflow_call:
+    inputs:
+      nix:
+        description: Run nix flake check
+        type: boolean
+        default: true
 
 concurrency:
-  group: check-pr-${{ github.event.pull_request.number }}
-  cancel-in-progress: true
+  group: check-${{ github.event_name == 'pull_request' && format('pr-{0}', github.event.pull_request.number) || github.run_id }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 permissions:
   contents: read
@@ -20,12 +28,12 @@ jobs:
           fetch-depth: 0
       - name: Check the version and conventional commits
         env:
-          BASE_SHA: ${{ github.event.pull_request.base.sha }}
-          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
           PR_TITLE: ${{ github.event.pull_request.title }}
         run: |
           # A force push can drop the previous head from the advertised refs.
-          if [[ -n "$BASE_SHA" ]] && ! git cat-file -e "$BASE_SHA^{commit}" 2>/dev/null; then
+          if [[ -n "$BASE_SHA" && ! "$BASE_SHA" =~ ^0+$ ]] && ! git cat-file -e "$BASE_SHA^{commit}" 2>/dev/null; then
             git fetch --no-tags origin "$BASE_SHA" || BASE_SHA=
           fi
           python3 .github/scripts/version.py commits --base "$BASE_SHA" --head "$HEAD_SHA"
@@ -33,6 +41,7 @@ jobs:
   # of these runners, only x86_64-linux has kvm, which the nixos vm test needs
   nix:
     name: nix ${{ matrix.system }}
+    if: github.event_name == 'pull_request' || inputs.nix
     runs-on: ${{ matrix.runner }}
     # a hung check would otherwise hold the runner for GitHub's six-hour limit
     timeout-minutes: 45
@@ -77,3 +86,17 @@ jobs:
           set --
           for name in $names; do set -- "$@" ".#checks.$SYSTEM.$name"; done
           nix build --print-build-logs "$@"
+      # the release looks this artifact up by tree to reuse the check
+      - name: Record the checked tree
+        id: tree
+        if: github.event_name == 'pull_request' && matrix.system == 'x86_64-linux'
+        run: |
+          tree=$(git rev-parse 'HEAD^{tree}')
+          printf '%s\n' "$tree" > "$RUNNER_TEMP/nix-check-tree"
+          printf 'tree=%s\n' "$tree" >> "$GITHUB_OUTPUT"
+      - if: github.event_name == 'pull_request' && matrix.system == 'x86_64-linux'
+        uses: actions/upload-artifact@v7
+        with:
+          name: nix-check-${{ steps.tree.outputs.tree }}
+          path: ${{ runner.temp }}/nix-check-tree
+          retention-days: 30
