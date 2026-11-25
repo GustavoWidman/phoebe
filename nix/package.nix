@@ -61,8 +61,8 @@ let
     }
   );
 
-  # the tests also read the web app's contract and types, which the package
-  # itself never needs
+  # the tests also read the web app's contract and types, and the stores'
+  # recorded answers, which the package itself never needs
   checkArgs = args // {
     inherit cargoArtifacts;
     src = lib.fileset.toSource {
@@ -71,6 +71,7 @@ let
         sources
         ../contract/web.json
         ../web/src/lib/wire/types.ts
+        ../src/web/live/test/recorded
       ];
     };
   };

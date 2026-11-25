@@ -1,0 +1,1 @@
+{"status":"success","data":{"resultType":"vector","result":[{"metric":{"instance":"100.84.113.80:9100","job":"node","machine":"oracle-1"},"value":[1795631016.771,"1795622040"]},{"metric":{"instance":"100.119.141.104:9100","job":"node","machine":"laptop-mac"},"value":[1795631016.771,"1795627680"]}]}}

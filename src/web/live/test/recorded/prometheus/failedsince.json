@@ -1,0 +1,1 @@
+{"status":"success","data":{"resultType":"vector","result":[{"metric":{"__name__":"ALERTS_FOR_STATE","alertname":"UnitFailed","instance":"100.119.141.104:9100","job":"node","machine":"laptop-mac","name":"org.nixos.niks3-auto-upload","severity":"info"},"value":[1795631016.822,"1795627721"]}]}}
