@@ -4,7 +4,7 @@
  * it waits until there is a session again; signing in returns it to the screen it left.
  */
 import { router, type Route } from '#lib/router.svelte.ts';
-import { device } from './device.ts';
+import { device, due } from './device.ts';
 
 /** `fetch`, signed with this device's session; a 401 means there is none the server takes */
 export async function signed(url: string, init: RequestInit = {}): Promise<Response> {
@@ -36,3 +36,9 @@ export function refused(): Promise<void> {
 
 /** the screen signing in returns to */
 export const back = () => left;
+
+/** renews a session past a day old, unseen, when a sign-in node answers; the next once shown */
+export async function renew() {
+	const session = await device.session();
+	if (session && due(session, Date.now())) (await import('./signin.ts')).renew();
+}

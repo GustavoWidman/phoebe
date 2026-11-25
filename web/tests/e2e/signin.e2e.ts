@@ -76,6 +76,32 @@ test('signing in returns to the alert a notification opened', async ({ page, fle
 	await expect(page.locator('header.hero h1')).toHaveText('lavalink.service failed');
 });
 
+test('a session past a day old renews itself unseen', async ({ page, fleet: _ }) => {
+	await page.goto('/signin');
+	await expect(title(page)).toHaveText('Signed in on the tailnet');
+	const before = (await device(page)).token;
+	await page.evaluate(async () => {
+		const db = await new Promise<IDBDatabase>((ok) => {
+			const r = indexedDB.open('phoebe-device', 1);
+			r.onsuccess = () => ok(r.result);
+		});
+		const store = (mode: IDBTransactionMode) =>
+			db.transaction('phoebe-device', mode).objectStore('phoebe-device');
+		const stored = await new Promise<{ session: { iat: number } }>((ok) => {
+			const r = store('readonly').get('this');
+			r.onsuccess = () => ok(r.result);
+		});
+		stored.session.iat -= 25 * 60 * 60 * 1000;
+		await new Promise((ok) => (store('readwrite').put(stored, 'this').onsuccess = ok));
+	});
+	const renewed = page.waitForRequest((r) => r.url().endsWith('/auth/session'));
+	await page.goto('/');
+	await renewed;
+	await expect.poll(async () => (await device(page)).token).not.toBe(before);
+	await expect(page).toHaveURL(/\/$/);
+	await expect(page.getByRole('heading', { level: 1 })).toHaveText('2 things need you.');
+});
+
 test('a session the server stops taking ends on the sign-in screen', async ({ page, fleet: _ }) => {
 	await page.goto('/signin');
 	await expect(title(page)).toHaveText('Signed in on the tailnet');
