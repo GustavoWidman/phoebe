@@ -332,6 +332,54 @@ let
       }
     ];
   };
+
+  # vector's own unit tests, over the transforms every journald machine runs
+  logs = event: {
+    insert_at = "labelled";
+    type = "log";
+    log_fields = event;
+  };
+  vectorTests = generated.vector // {
+    tests = [
+      {
+        name = "a canceled query loki logs stays out of loki";
+        inputs = [
+          (logs {
+            _SYSTEMD_UNIT = "loki.service";
+            PRIORITY = "3";
+            message = ''level=error caller=scheduler_processor.go:111 component=querier msg="error processing requests from scheduler" err="rpc error: code = Canceled desc = context canceled"'';
+          })
+        ];
+        no_outputs_from = [ "quiet" ];
+      }
+      {
+        name = "every other line reaches loki, loki's own included";
+        inputs = [
+          (logs {
+            _SYSTEMD_UNIT = "loki.service";
+            PRIORITY = "3";
+            message = "level=error msg=\"failed to flush chunks\"";
+          })
+          (logs {
+            _SYSTEMD_UNIT = "web.service";
+            PRIORITY = "6";
+            message = "context canceled";
+          })
+        ];
+        outputs = [
+          {
+            extract_from = "quiet";
+            conditions = [
+              {
+                type = "vrl";
+                source = ''.machine == "n1" && includes(["loki.service", "web.service"], .unit)'';
+              }
+            ];
+          }
+        ];
+      }
+    ];
+  };
 in
 pkgs.runCommandLocal "phoebe-rules"
   {
@@ -339,12 +387,14 @@ pkgs.runCommandLocal "phoebe-rules"
       pkgs.prometheus.cli
       pkgs.prometheus-alertmanager
       pkgs.prometheus-blackbox-exporter
+      pkgs.vector
     ];
   }
   ''
     promtool check config ${json "prometheus.yml" (generated.prometheus rules)}
     promtool test rules ${json "tests.yml" tests}
     amtool check-config ${json "alertmanager.yml" generated.alertmanager}
+    vector test ${json "vector.json" vectorTests}
     blackbox_exporter --config.check --config.file ${json "blackbox.yml" generated.blackbox}
     touch $out
   ''
