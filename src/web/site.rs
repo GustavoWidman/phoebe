@@ -2,7 +2,12 @@
 //! `/api` for a browser that proves its session on every request. signing
 //! in is not a route of this site ([super::signin])
 
-use std::{convert::Infallible, path::PathBuf, sync::Arc, time::Duration};
+use std::{
+    convert::Infallible,
+    path::{Path, PathBuf},
+    sync::Arc,
+    time::Duration,
+};
 
 use axum::{
     Json, Router,
@@ -87,32 +92,110 @@ pub fn router(source: Source, settings: Settings) -> Router {
 
 /// the web app build, named by its `index.html`, which names every other
 /// file by its content
-fn build(web_dir: &std::path::Path) -> String {
+fn build(web_dir: &Path) -> String {
     std::fs::read(web_dir.join("index.html")).map_or_else(
         |_| String::new(),
-        |index| {
-            // FNV-1a
-            let hash = index.iter().fold(0xcbf2_9ce4_8422_2325_u64, |hash, byte| {
-                (hash ^ *byte as u64).wrapping_mul(0x0100_0000_01b3)
-            });
-            format!("{hash:012x}")[..12].to_owned()
-        },
+        |index| format!("{:012x}", fnv(&index))[..12].to_owned(),
     )
+}
+
+/// FNV-1a of `bytes`
+fn fnv(bytes: &[u8]) -> u64 {
+    bytes.iter().fold(0xcbf2_9ce4_8422_2325_u64, |hash, byte| {
+        (hash ^ u64::from(*byte)).wrapping_mul(0x0100_0000_01b3)
+    })
 }
 
 /// the built app; unknown paths get `index.html`, so the app's own routes
 /// deep-link. the build writes a `.br` and a `.gz` beside every text file,
 /// which go out as they are to a browser that takes them
-fn web(web_dir: &std::path::Path) -> Router {
+fn web(web_dir: &Path) -> Router {
     let index = ServeFile::new(web_dir.join("index.html"))
         .precompressed_br()
         .precompressed_gzip();
-    Router::new().fallback_service(
-        ServeDir::new(web_dir)
-            .precompressed_br()
-            .precompressed_gzip()
-            .fallback(index),
-    )
+    let files = ServeDir::new(web_dir)
+        .precompressed_br()
+        .precompressed_gzip()
+        .fallback(index);
+    let web_dir: Arc<Path> = web_dir.into();
+    Router::new()
+        .fallback_service(files)
+        .layer(middleware::from_fn(move |request: Request, next: Next| {
+            caching(web_dir.clone(), request, next)
+        }))
+}
+
+/// hashed build files never change, so browsers and cloudflare keep them a
+/// year. everything else, `index.html` and the service worker first, is
+/// checked on every load against an ETag of its content: every file in the
+/// nix store has the same mtime, so a validator built from mtime and size
+/// calls a new file of the same size unchanged, and a cache left to its own
+/// rules keeps serving an old service worker, which keeps serving an old app
+async fn caching(web_dir: Arc<Path>, mut request: Request, next: Next) -> Response {
+    let path = request.uri().path().to_owned();
+    if path.starts_with("/_app/immutable/") {
+        let mut response = next.run(request).await;
+        if response.status().is_success() {
+            response.headers_mut().insert(
+                header::CACHE_CONTROL,
+                HeaderValue::from_static("public, max-age=31536000, immutable"),
+            );
+        }
+        return response;
+    }
+
+    let validator = request.headers_mut().remove(header::IF_NONE_MATCH);
+    request.headers_mut().remove(header::IF_MODIFIED_SINCE);
+    let mut response = next.run(request).await;
+    let headers = response.headers_mut();
+    headers.remove(header::LAST_MODIFIED);
+    headers.remove(header::ETAG);
+    headers.insert(header::CACHE_CONTROL, HeaderValue::from_static("no-cache"));
+    if !response.status().is_success() {
+        return response;
+    }
+
+    let encoding = response
+        .headers()
+        .get(header::CONTENT_ENCODING)
+        .and_then(|value| value.to_str().ok())
+        .map(str::to_owned);
+    let Some(etag) = etag(&web_dir, &path, encoding.as_deref()) else {
+        return response;
+    };
+    if validator.is_some_and(|validator| validator.as_bytes() == etag.as_bytes()) {
+        let mut unchanged = StatusCode::NOT_MODIFIED.into_response();
+        let headers = unchanged.headers_mut();
+        headers.insert(header::ETAG, etag);
+        headers.insert(header::CACHE_CONTROL, HeaderValue::from_static("no-cache"));
+        return unchanged;
+    }
+    response.headers_mut().insert(header::ETAG, etag);
+    response
+}
+
+/// an ETag of the bytes `path` sends in `encoding`: its file, or the `.br` or
+/// `.gz` copy beside it, and `index.html` for a path only the app knows
+fn etag(web_dir: &Path, path: &str, encoding: Option<&str>) -> Option<HeaderValue> {
+    let relative = path.trim_start_matches('/');
+    if relative.split('/').any(|part| part == ".." || part == ".") {
+        return None;
+    }
+    let mut file = web_dir.join(relative);
+    if file.is_dir() {
+        file = file.join("index.html");
+    }
+    if !file.is_file() {
+        file = web_dir.join("index.html");
+    }
+    let mut sent = file.into_os_string();
+    match encoding {
+        Some("br") => sent.push(".br"),
+        Some("gzip") => sent.push(".gz"),
+        _ => {}
+    }
+    let bytes = std::fs::read(sent).ok()?;
+    HeaderValue::from_str(&format!("\"{:016x}\"", fnv(&bytes))).ok()
 }
 
 /// what every response carries
