@@ -60,7 +60,7 @@ pub fn chart(registry: &Registry, of: &Subject, metric: Metric) -> Result<Chart,
                 return Err(Refusal::Invalid(format!("{name} has no probes")));
             }
             Ok(Chart {
-                lines: vec![("latency", Named::Latency)],
+                lines: vec![("latency", Named::Latency), ("failing", Named::Failing)],
                 on: super::promql::matcher("service", &name.0),
                 by_node: true,
             })
@@ -130,6 +130,41 @@ pub fn node_line(node: &Hostname, ranges: &[Range], grid: &[i64]) -> SeriesData 
             points: on_grid(range, grid),
         }],
     }
+}
+
+/// the spans a probe failed on the grid, from `node` or, without one, from
+/// any node: each runs from the last point before the failure to the first
+/// after it, as a line drawn over the grid leaves its gap
+pub fn failing(ranges: &[Range], node: Option<&Hostname>, grid: &[i64]) -> Vec<(Ms, Ms)> {
+    let lines: Vec<Vec<Point>> = ranges
+        .iter()
+        .filter(|range| node.is_none_or(|node| range.labels.get("prober") == Some(&node.0)))
+        .map(|range| on_grid(Some(range), grid))
+        .collect();
+    let failed: Vec<bool> = (0..grid.len())
+        .map(|i| lines.iter().any(|line| line[i].1.is_some()))
+        .collect();
+    spans(&failed, grid)
+}
+
+/// the spans of `grid` around each run of `flags` that holds
+pub fn spans(flags: &[bool], grid: &[i64]) -> Vec<(Ms, Ms)> {
+    let mut spans = Vec::new();
+    let mut start = None;
+    for (i, flag) in flags.iter().enumerate() {
+        match (flag, start) {
+            (true, None) => start = Some(i.saturating_sub(1)),
+            (false, Some(from)) => {
+                spans.push((Ms(grid[from]), Ms(grid[i])));
+                start = None;
+            }
+            _ => {}
+        }
+    }
+    if let (Some(from), Some(last)) = (start, grid.last()) {
+        spans.push((Ms(grid[from]), Ms(*last)));
+    }
+    spans
 }
 
 /// min, median and max of the latency across the nodes that reach it

@@ -547,6 +547,9 @@ a.band:active {
 	stroke-width: 1.5;
 	stroke-dasharray: 4 4;
 }
+.ch .none {
+	fill: var(--bg2);
+}
 .ch .gap {
 	fill: var(--bad-w);
 }

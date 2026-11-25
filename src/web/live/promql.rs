@@ -62,6 +62,9 @@ pub enum Named {
     /// milliseconds the slowest of a service's probes took from each
     /// prober; unset while one of them fails
     Latency,
+    /// 0 while one of a service's probes fails from each prober, unset
+    /// while they all succeed or none ran
+    Failing,
     /// every alert firing, by its labels
     Firing,
     /// every alert pending or firing, by its labels and `alertstate`
@@ -210,6 +213,7 @@ impl Named {
                 sel("probe_duration_seconds", ""),
                 sel("probe_success", "")
             ),
+            Self::Failing => format!("min by (prober) ({}) == 0", sel("probe_success", "")),
             Self::Firing => sel("ALERTS", r#"alertstate="firing""#),
             Self::Alerts => sel("ALERTS", ""),
             Self::FiredWithin => format!(

@@ -36,12 +36,3 @@ export function refused(): Promise<void> {
 
 /** the screen signing in returns to */
 export const back = () => left;
-
-/** a sign-in address as its machine's name */
-export const name = (via: string) => {
-	try {
-		return new URL(via).hostname.split('.')[0];
-	} catch {
-		return via;
-	}
-};

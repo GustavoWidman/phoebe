@@ -159,7 +159,9 @@ the bar and shows an ok dot with a mute `RESOLVED` kicker, so it reads as an ord
 column, `--h` tall. Line 1.5 `acc`, area `acc-w`, three hairline grid lines, y max in 11 mono top
 right, four time ticks under it. States: line; line and area; two series (second in mute);
 range band (min to max across nodes, median line); fired mark (dashed 1.5 `bad` vertical);
-gap (a `bad-w` span where data is missing, a timeout); hover (1px crosshair, tip on `ink` with
+no data (a `bg2` span where nothing was measured: before the node's store held the series, or
+while the machine was down); timeout (a `bad-w` span where a probe failed, over any no-data
+span it falls in); hover (1px crosshair, tip on `ink` with
 `bg` text, radius 8). Inline forms: **gauge** (a 2px `rule` track with an `acc` fill to the value, `bad`
 fill past 85%), **sparkline** (1.5 line, currentColor).
 

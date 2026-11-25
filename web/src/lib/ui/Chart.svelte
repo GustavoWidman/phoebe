@@ -1,14 +1,15 @@
 <!--
 	A plot 600 by 100 units stretched to its column: three hairline grid lines, the y max top
 	right, four time ticks under it. Lines in acc (a second one in mute), an optional area under
-	the first, a min-to-max band with its median, a dashed mark where an alert fired, and a bad
-	wash over the spans a line has no value, when those mean a timeout. A pointer over it shows
-	a crosshair and the values at that moment.
+	the first, a min-to-max band with its median, and a dashed mark where an alert fired. Where
+	the first line or the band has no value, a quiet wash says nothing was measured; where a
+	probe failed, the bad wash says it timed out. A pointer over it shows a crosshair and the
+	values at that moment.
 -->
 <script lang="ts">
 	import { hm } from '#lib/derive/format.ts';
 	import type { Ms } from '#lib/wire/types.ts';
-	import { area, between, path, xOf, type Frame } from './plot.ts';
+	import { area, between, gaps, path, xOf, type Frame } from './plot.ts';
 
 	type Point = [Ms, number | null];
 	type Props = {
@@ -22,8 +23,8 @@
 		max?: number;
 		area?: boolean;
 		mark?: Ms | null;
-		/** spans to wash, where missing data means a timeout */
-		gaps?: [Ms, Ms][];
+		/** the spans a probe failed, which a timeout's wash shows */
+		failing?: [Ms, Ms][];
 		fmt: (v: number | null) => string;
 		h?: number;
 		/** tick labels: times of day, or days for a week */
@@ -39,7 +40,7 @@
 		max,
 		area: filled = false,
 		mark = null,
-		gaps = [],
+		failing = [],
 		fmt,
 		h = 96,
 		days = false
@@ -54,6 +55,7 @@
 	const hi = $derived(max ?? (Math.max(...values.map((v) => v ?? 0)) * 1.15 || 1));
 	const frame = $derived<Frame>({ from, to, lo: min, hi, w: W, h: H });
 	const first = $derived(lines[0]?.points ?? band?.map((p) => [p[0], p[2]] as Point) ?? []);
+	const empty = $derived(gaps(first));
 	const dayFmt = new Intl.DateTimeFormat('en-GB', { day: 'numeric', month: 'short' });
 	const ticks = $derived(
 		[0, 1 / 3, 2 / 3, 1].map((f) => {
@@ -71,14 +73,17 @@
 		for (let j = 1; j < first.length; j++)
 			if (Math.abs(first[j][0] - t) < Math.abs(first[i][0] - t)) i = j;
 		const time = first[i][0];
-		const said = band
-			? fmt(band[i]?.[2] ?? null)
-			: lines
-					.map((l) => {
-						const v = l.points.find((p) => p[0] === time)?.[1] ?? null;
-						return lines.length > 1 ? `${l.name} ${fmt(v)}` : fmt(v);
-					})
-					.join(' · ');
+		const measured = first[i][1] != null || failing.some(([a, b]) => a <= time && time <= b);
+		const said = !measured
+			? 'no data'
+			: band
+				? fmt(band[i]?.[2] ?? null)
+				: lines
+						.map((l) => {
+							const v = l.points.find((p) => p[0] === time)?.[1] ?? null;
+							return lines.length > 1 ? `${l.name} ${fmt(v)}` : fmt(v);
+						})
+						.join(' · ');
 		return { x: xOf(time, frame) / W, tip: `${hm(time)} · ${said}` };
 	});
 
@@ -102,7 +107,10 @@
 >
 	<svg viewBox="0 0 {W} {H}" preserveAspectRatio="none" aria-hidden="true">
 		{#each [0, 0.5, 1] as f (f)}<path class="gr" d="M0,{H * f}H{W}" />{/each}
-		{#each gaps as [a, b], i (i)}
+		{#each empty as [a, b], i (i)}
+			<rect class="none" x={xOf(a, frame)} y="0" width={xOf(b, frame) - xOf(a, frame)} height={H} />
+		{/each}
+		{#each failing as [a, b], i (i)}
 			<rect class="gap" x={xOf(a, frame)} y="0" width={xOf(b, frame) - xOf(a, frame)} height={H} />
 		{/each}
 		{#if band}

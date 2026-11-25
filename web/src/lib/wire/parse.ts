@@ -208,7 +208,8 @@ const seriesShape = obj<Series>({
 	metric: oneOf('cpu', 'mem', 'disk', 'net', 'load', 'latency'),
 	from: ms,
 	to: ms,
-	data: seriesData
+	data: seriesData,
+	failing: list(tuple<[Ms, Ms]>(ms, ms))
 });
 
 const logLine = obj<LogLine>({

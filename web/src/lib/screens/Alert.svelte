@@ -145,6 +145,7 @@
 			max={m.max}
 			area
 			mark={alert.starts_at}
+			failing={series.failing}
 			h={100}
 		/>
 	{/if}

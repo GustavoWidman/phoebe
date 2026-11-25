@@ -325,6 +325,35 @@ fn a_chart_is_its_answer_on_the_grid() {
 }
 
 #[test]
+fn a_failing_probe_is_told_apart_from_no_data() {
+    let grid: Vec<i64> = (1..=8).map(|k| k * 60_000).collect();
+    let prober = |node: &str, failed: &[i64]| prometheus::Range {
+        labels: Labels::from([("prober".to_owned(), node.to_owned())]),
+        points: failed.iter().map(|k| (k * 60_000, Some(0.0))).collect(),
+    };
+    // lab fails at minutes 3 and 4, oracle-1 at 8; minutes nothing measured
+    // at all are not failures, so they make no span
+    let failed = [prober("lab", &[3, 4]), prober("oracle-1", &[8])];
+    let minute = |k: i64| Ms(k * 60_000);
+
+    assert_eq!(
+        charts::failing(&failed, Some(&Hostname::from("lab")), &grid),
+        [(minute(2), minute(5))],
+        "from the last point before to the first after, as the line's gap runs"
+    );
+    assert_eq!(
+        charts::failing(&failed, None, &grid),
+        [(minute(2), minute(5)), (minute(7), minute(8))],
+        "the band: any node"
+    );
+    assert_eq!(charts::failing(&failed, Some(&Hostname::from("altar")), &grid), []);
+    assert_eq!(
+        charts::spans(&[true, false, false], &grid[..3]),
+        [(minute(1), minute(2))]
+    );
+}
+
+#[test]
 fn a_notice_line_is_found_wherever_the_logger_put_it() {
     let notice = NoticeLine {
         alert: AlertId::from("ae8ac1acc2b4edb0"),
