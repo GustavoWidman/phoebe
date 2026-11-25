@@ -23,6 +23,8 @@ use futures_util::Stream;
 use serde::Deserialize;
 use tokio::{sync::watch, time::Instant};
 
+#[cfg(test)]
+pub use self::story::SETTLED;
 pub use self::story::START;
 use self::{
     logs::Filter,
