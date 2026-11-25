@@ -227,7 +227,7 @@ in
         """the first snapshot the node's app streams"""
         # the stream never ends, so curl gives up on it, and fails, after 3 seconds
         out = node.succeed(
-            "{ browser curl /api/stream -N --max-time 3 || true; } | sed -n 's/^data: //p' | head -n 1"
+            "{ browser curl /api/stream -N --max-time 3 || true; } | sed -n '/^data: /{s///p;q}'"
         )
         return json.loads(out) if out.strip() else None
 
