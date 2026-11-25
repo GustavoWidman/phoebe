@@ -87,10 +87,17 @@ pkgs.runCommandLocal "phoebe-darwin-module"
         system "altar" {
           services.phoebe.web = {
             enable = true;
-            origin = "https://phoebe.example.com";
+            publicOrigin = "https://phoebe.example.com";
+            sessionKeyFile = "/run/agenix/phoebe-session-key";
+            signin.domain = "tail0000.ts.net";
+            tunnel = {
+              id = "6f1c2a9e-3b7d-4e58-9a0c-d2e4f6a8b1c3";
+              credentialsFile = "/run/agenix/phoebe-tunnel";
+            };
             push = {
               vapidKeyFile = "/run/agenix/phoebe-vapid";
               subscriptionsFile = "/run/agenix/phoebe-push-subscriptions";
+              edit = "agenix -e secrets/phoebe-push-subscriptions.age";
             };
           };
         }
@@ -111,16 +118,17 @@ pkgs.runCommandLocal "phoebe-darwin-module"
     # the node runs every store and the app, the agent none
     jq -e '.daemons | keys == [
       "phoebe-alertmanager", "phoebe-blackbox", "phoebe-launchd-state", "phoebe-loki",
-      "phoebe-prometheus", "phoebe-vector", "phoebe-web", "prometheus-node-exporter"
+      "phoebe-prometheus", "phoebe-vector", "phoebe-web", "phoebe-web-cert", "prometheus-node-exporter"
     ]' $node
     jq -e '.daemons | keys == ["phoebe-launchd-state", "phoebe-vector", "prometheus-node-exporter"]' $agent
     jq -e '.user == 472' $node
     jq -e '.user == null' $agent
 
-    # the stores and the app run as _phoebe, vector and the job reporter as root
-    jq -e '[.daemons | to_entries[] | select(.key | test("prometheus$|alertmanager|loki|blackbox|web"))
+    # the stores and the app run as _phoebe; vector, the job reporter and the
+    # certificate's fetcher as root
+    jq -e '[.daemons | to_entries[] | select(.key | test("prometheus$|alertmanager|loki|blackbox|web$"))
       | select(.key != "prometheus-node-exporter") | .value.UserName] | unique == ["_phoebe"]' $node
-    jq -e '[.daemons["phoebe-vector", "phoebe-launchd-state"].UserName] == [null, null]' $node
+    jq -e '[.daemons["phoebe-vector", "phoebe-launchd-state", "phoebe-web-cert"].UserName] == [null, null, null]' $node
 
     # every listener binds the tailnet address, never every interface
     args() { jq -r --arg d "$2" '.daemons[$d].ProgramArguments | join(" ")' "$1"; }
@@ -138,8 +146,17 @@ pkgs.runCommandLocal "phoebe-darwin-module"
     ! args $node phoebe-alertmanager | grep -qF -- '--cluster.peer=100.64.0.2'
     args $node phoebe-blackbox | grep -qF -- '--web.listen-address=100.64.0.2:9115'
     # the app and its hook stay on loopback, and alertmanager posts to the hook
-    args $node phoebe-web | grep -qF -- '--listen 127.0.0.1:7980 --hook 127.0.0.1:7981'
-    args $node phoebe-web | grep -qF -- '--origin https://phoebe.example.com --push-key-file /run/agenix/phoebe-vapid'
+    # the app on a socket of its own directory, for cloudflared, which stays
+    # in its process group
+    args $node phoebe-web | grep -qF -- '--socket /var/lib/phoebe-web/origin.sock --hook 127.0.0.1:7981'
+    jq -e '.daemons["phoebe-web"].AbandonProcessGroup == false' $node
+    # launchd hands the app its secrets where they are, for _phoebe to read
+    args $node phoebe-web | grep -qF -- '--origin https://phoebe.example.com --session-key-file /run/agenix/phoebe-session-key'
+    args $node phoebe-web | grep -qF -- '--signin-port 45731 --signin-cert /var/lib/phoebe-web/cert.pem --signin-key /var/lib/phoebe-web/key.pem --capability r3dlust.com/cap/phoebe'
+    args $node phoebe-web | grep -qF -- '--signin-url https://oracle-1.tail0000.ts.net:45731 --signin-url https://altar.tail0000.ts.net:45731'
+    args $node phoebe-web | grep -qF -- '--tunnel-id 6f1c2a9e-3b7d-4e58-9a0c-d2e4f6a8b1c3 --tunnel-credentials-file /run/agenix/phoebe-tunnel --cloudflared /nix/store/'
+    args $node phoebe-web | grep -qF -- "--push-key-file /run/agenix/phoebe-vapid --push-subscriptions-file /run/agenix/phoebe-push-subscriptions --push-edit 'agenix -e secrets/phoebe-push-subscriptions.age'"
+    jq -e '.daemons["phoebe-web-cert"].StartInterval == 3600' $node
     jq -e '.alertmanager.receivers[0].webhook_configs == [{url: "http://127.0.0.1:7981/hook", send_resolved: true}]' $node
     jq -e '.daemons["phoebe-web"].StandardOutPath == "/var/log/phoebe-web.log"' $node
     jq -e '.exporter == {listenAddress: "100.64.0.2", port: 9100,
