@@ -1,0 +1,9 @@
+[package]
+name = "phoebe"
+version = "0.1.0"
+edition = "2024"
+description = "Observability for a Nix fleet: every machine and service, their metrics, logs and alerts"
+license = "MIT"
+repository = "https://github.com/GustavoWidman/phoebe"
+
+[dependencies]
