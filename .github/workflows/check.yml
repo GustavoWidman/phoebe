@@ -1,0 +1,79 @@
+name: check
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+concurrency:
+  group: check-pr-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  commits:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+      - name: Check the version and conventional commits
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          PR_TITLE: ${{ github.event.pull_request.title }}
+        run: |
+          # A force push can drop the previous head from the advertised refs.
+          if [[ -n "$BASE_SHA" ]] && ! git cat-file -e "$BASE_SHA^{commit}" 2>/dev/null; then
+            git fetch --no-tags origin "$BASE_SHA" || BASE_SHA=
+          fi
+          python3 .github/scripts/version.py commits --base "$BASE_SHA" --head "$HEAD_SHA"
+
+  # of these runners, only x86_64-linux has kvm, which the nixos vm test needs
+  nix:
+    name: nix ${{ matrix.system }}
+    runs-on: ${{ matrix.runner }}
+    # a hung check would otherwise hold the runner for GitHub's six-hour limit
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - system: x86_64-linux
+            runner: ubuntu-24.04
+            vm: true
+          - system: aarch64-linux
+            runner: ubuntu-24.04-arm
+            vm: false
+          - system: aarch64-darwin
+            runner: macos-15
+            vm: false
+    steps:
+      - uses: actions/checkout@v5
+      - name: Enable KVM
+        if: matrix.vm
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+      - uses: nixbuild/nix-quick-install-action@v34
+        with:
+          nix_conf: |
+            substituters = https://cache.nixos.org/ https://cache.r3dlust.com
+            trusted-public-keys = cache.nixos.org-1:6NCHdD59X431o0gWypbMrAURkbJ16ZPMQFGspcDShjY= cache.r3dlust.com-1:Wdkf9mes2ued0P7C7CL3Jax1b4KPuJwQpM3h4G/Z+yI=
+            # nix builds one derivation at a time unless told otherwise
+            max-jobs = auto
+            system-features = nixos-test benchmark big-parallel kvm
+      - if: matrix.vm
+        run: nix flake check --print-build-logs
+      - name: Build every check but the vm test
+        if: ${{ !matrix.vm }}
+        env:
+          SYSTEM: ${{ matrix.system }}
+        run: |
+          names=$(nix eval --raw ".#checks.$SYSTEM" \
+            --apply 'checks: toString (builtins.attrNames (removeAttrs checks [ "nixos" ]))')
+          set --
+          for name in $names; do set -- "$@" ".#checks.$SYSTEM.$name"; done
+          nix build --print-build-logs "$@"
