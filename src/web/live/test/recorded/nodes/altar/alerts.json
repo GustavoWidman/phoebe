@@ -1,0 +1,1 @@
+{"status":"success","data":{"alerts":[{"labels":{"alertname":"UnitFailed","instance":"100.119.141.104:9100","job":"node","machine":"laptop-mac","name":"org.nixos.niks3-auto-upload","severity":"info"},"annotations":{"summary":"org.nixos.niks3-auto-upload failed on laptop-mac"},"state":"firing","activeAt":"2026-11-25T17:28:41.14012153Z","value":"1e+00"}]}}

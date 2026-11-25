@@ -116,6 +116,8 @@ pub enum Refusal {
     Invalid(String),
     /// it names something the fleet does not have
     Missing(String),
+    /// a store it needs did not answer
+    Unavailable(String),
 }
 
 impl IntoResponse for Refusal {
@@ -123,6 +125,7 @@ impl IntoResponse for Refusal {
         match self {
             Self::Invalid(reason) => (StatusCode::BAD_REQUEST, reason).into_response(),
             Self::Missing(reason) => (StatusCode::NOT_FOUND, reason).into_response(),
+            Self::Unavailable(reason) => (StatusCode::SERVICE_UNAVAILABLE, reason).into_response(),
         }
     }
 }

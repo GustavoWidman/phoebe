@@ -216,10 +216,6 @@ pub enum UnitState {
     Active,
     /// starting, or restarting after it exited
     Activating,
-    #[cfg_attr(
-        not(test),
-        expect(dead_code, reason = "the simulated fleet stops no unit")
-    )]
     Inactive,
     Failed,
     /// its machine is not answering
