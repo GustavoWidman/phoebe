@@ -477,9 +477,11 @@ let
     );
   };
 
-  # the registry, for the app
+  # the registry, for the app, which also learns from it which machine it
+  # runs on
   fleet = {
     inherit nodes ports;
+    inherit (cfg) machine;
     machines = lib.mapAttrs (_: machine: { inherit (machine) os alwaysOn address; }) machines;
     services = lib.mapAttrs (_: service: {
       inherit (service) machine unit metrics;
