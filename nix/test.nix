@@ -153,13 +153,22 @@ in
             timeout=timeout,
         )
 
-    def streamed(node, test, timeout=300):
-        """waits until jq's test holds for the first snapshot the node's app streams"""
-        node.wait_until_succeeds(
-            "curl -sN --max-time 3 localhost:7980/api/stream | sed -n 's/^data: //p' | head -n 1 "
-            + f"| jq -e {shlex.quote(test)}",
-            timeout=timeout,
+    def snapshot(node):
+        """the first snapshot the node's app streams"""
+        out = node.succeed(
+            "curl -sN --max-time 3 localhost:7980/api/stream | sed -n 's/^data: //p' | head -n 1"
         )
+        return json.loads(out) if out.strip() else None
+
+    def streamed(node, holds, timeout=300):
+        """waits until a snapshot the node's app streams holds, and returns it"""
+        for _ in range(timeout // 5):
+            last = snapshot(node)
+            if last is not None and holds(last):
+                return last
+            node.sleep(5)
+        node.log(node.succeed("journalctl -u phoebe-web --no-pager | tail -n 30"))
+        raise AssertionError(f"{node.name} never streamed it; the last was {json.dumps(last)}")
 
     def pushes():
         """every push the nodes' push services got, with the node that got it"""
@@ -186,10 +195,13 @@ in
         for node in nodes:
             streamed(
                 node,
-                '([.machines[].state.kind] | all(. == "up"))'
-                + ' and ([.nodes[] | .prometheus and .loki and .alertmanager and .blackbox] | all)'
-                + ' and ([.services[].probes[].views | map(.node)] | all(. == ["node1", "node2"]))'
-                + ' and ([.services[].unit.state] | all(. == "active"))',
+                lambda fleet: all(m["state"]["kind"] == "up" for m in fleet["machines"])
+                and all(n["prometheus"] and n["loki"] and n["alertmanager"] and n["blackbox"] for n in fleet["nodes"])
+                and all(
+                    [v["node"] for v in p["views"]] == ["node1", "node2"]
+                    for s in fleet["services"] for p in s["probes"]
+                )
+                and all(s["unit"]["state"] == "active" for s in fleet["services"]),
             )
 
     with subtest("a line logged on the agent reaches both lokis"):
@@ -217,8 +229,11 @@ in
         for node in nodes:
             streamed(
                 node,
-                '.alerts | map(select(.rule == "UnitFailed" and .service == "demo"'
-                + ' and .state.kind == "firing" and .seen_by == ["node1", "node2"])) | length == 1',
+                lambda fleet: [
+                    a for a in fleet["alerts"]
+                    if (a["rule"], a["service"], a["state"]["kind"]) == ("UnitFailed", "demo", "firing")
+                    and a["seen_by"] == ["node1", "node2"]
+                ] != [],
             )
         alert = json.loads(node1.succeed(
             "curl -sf localhost:7980/api/alerts | jq -c 'map(select(.service == \"demo\"))[0]'"
