@@ -155,8 +155,9 @@ in
 
     def snapshot(node):
         """the first snapshot the node's app streams"""
+        # the stream never ends, so curl gives up on it, and fails, after 3 seconds
         out = node.succeed(
-            "curl -sN --max-time 3 localhost:7980/api/stream | sed -n 's/^data: //p' | head -n 1"
+            "{ curl -sN --max-time 3 localhost:7980/api/stream || true; } | sed -n 's/^data: //p' | head -n 1"
         )
         return json.loads(out) if out.strip() else None
 
