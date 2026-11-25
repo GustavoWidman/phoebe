@@ -98,8 +98,8 @@ every node also runs:
   other scrape runs every 15 seconds. it keeps metrics for
   `node.retention.metrics` (90 days).
 - **loki**, keeping logs for `node.retention.logs` (30 days). every machine
-  pushes as one tenant, so its limits (16 MB/s, bursts of 32) are the whole
-  fleet's.
+  pushes as one tenant, so its limits (16 MB/s, bursts of 32, 20,000 active
+  streams) are the whole fleet's.
 - **alertmanager**, in one gossip cluster with the other nodes. every
   prometheus sends its alerts to every alertmanager, and the cluster makes
   sure each notification goes out from one of them only.
