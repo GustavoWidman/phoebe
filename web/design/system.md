@@ -76,9 +76,9 @@ Outside the three token blocks the app writes color only as `var(--token)`, `tra
 `currentColor` or `none`. A component may define a local custom property (`--s`, `--p`) only
 from a token.
 
-The mark is the moon's disc, a 2 unit ring, and the crescent it shows, in `acc`. The
-Home Screen icon draws it large on paper (`bg`), so it sits apart from coeus's ring on an ink
-tile; `scripts/icons.ts` renders every icon file from it.
+The mark is the moon's disc, a 2 unit ring, and the crescent it shows, in `acc`. The Home
+Screen icon is that crescent alone, large, in `acc` on paper (`bg`), so it sits apart from
+coeus's paper ring on an ink tile; `scripts/icons.ts` renders every icon file.
 
 ## Type
 
