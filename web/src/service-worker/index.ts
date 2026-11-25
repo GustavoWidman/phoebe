@@ -9,6 +9,7 @@
 /// <reference lib="webworker" />
 import { markChanged } from './changed.ts';
 import { notice, target, type Navigate } from './notice.ts';
+import { precacheRequests } from './precache.ts';
 
 const sw = self as unknown as ServiceWorkerGlobalScope;
 
@@ -22,7 +23,9 @@ const PRECACHE = [SHELL, ...FILES];
 const precached = new Set(PRECACHE);
 
 sw.addEventListener('install', (event) => {
-	event.waitUntil(caches.open(CACHE).then((cache) => cache.addAll(PRECACHE)));
+	event.waitUntil(
+		caches.open(CACHE).then((cache) => cache.addAll(precacheRequests(PRECACHE, sw.location.origin)))
+	);
 });
 
 sw.addEventListener('activate', (event) => {
