@@ -1,0 +1,76 @@
+/* The theme alone: the tokens of design/system.md, which scripts/design-gate.ts holds this
+   file to, and the two font stacks. */
+:root {
+	--bg: #f6f6f3;
+	--bg2: #ededea;
+	--panel: #fbfbf9;
+	--ink: #141413;
+	--ink2: #4b4b47;
+	--mute: #8b8b85;
+	--faint: #b9b9b2;
+	--rule: rgba(20, 20, 19, 0.1);
+	--rule2: rgba(20, 20, 19, 0.2);
+	--press: rgba(20, 20, 19, 0.045);
+	--acc: oklch(0.54 0.2 295);
+	--ok: oklch(0.6 0.13 155);
+	--warn: oklch(0.7 0.14 68);
+	--bad: oklch(0.57 0.2 27);
+	--warn-ink: color-mix(in oklab, var(--warn) 62%, var(--ink));
+	--acc-w: color-mix(in oklab, var(--acc) 11%, transparent);
+	--warn-w: color-mix(in oklab, var(--warn) 17%, var(--bg));
+	--bad-w: color-mix(in oklab, var(--bad) 12%, var(--bg));
+	--veil: color-mix(in oklab, var(--bg) 84%, transparent);
+	--scrim: rgba(20, 20, 19, 0.28);
+	--f: 'Instrument Sans', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+	--m: 'Geist Mono', ui-monospace, 'SF Mono', Menlo, monospace;
+	--e: cubic-bezier(0.23, 1, 0.32, 1);
+	color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+	:root:not([data-theme='light']) {
+		--bg: #0b0b0c;
+		--bg2: #151517;
+		--panel: #0f0f11;
+		--ink: #ececea;
+		--ink2: #b1b1ab;
+		--mute: #76766f;
+		--faint: #46463f;
+		--rule: rgba(255, 255, 255, 0.085);
+		--rule2: rgba(255, 255, 255, 0.17);
+		--press: rgba(255, 255, 255, 0.04);
+		--acc: oklch(0.74 0.15 295);
+		--ok: oklch(0.75 0.14 155);
+		--warn: oklch(0.8 0.13 75);
+		--bad: oklch(0.69 0.19 25);
+		--warn-ink: var(--warn);
+		--acc-w: color-mix(in oklab, var(--acc) 16%, transparent);
+		--warn-w: color-mix(in oklab, var(--warn) 15%, var(--bg));
+		--bad-w: color-mix(in oklab, var(--bad) 20%, var(--bg));
+		--veil: color-mix(in oklab, var(--bg) 84%, transparent);
+		--scrim: rgba(0, 0, 0, 0.55);
+		color-scheme: dark;
+	}
+}
+:root[data-theme='dark'] {
+	--bg: #0b0b0c;
+	--bg2: #151517;
+	--panel: #0f0f11;
+	--ink: #ececea;
+	--ink2: #b1b1ab;
+	--mute: #76766f;
+	--faint: #46463f;
+	--rule: rgba(255, 255, 255, 0.085);
+	--rule2: rgba(255, 255, 255, 0.17);
+	--press: rgba(255, 255, 255, 0.04);
+	--acc: oklch(0.74 0.15 295);
+	--ok: oklch(0.75 0.14 155);
+	--warn: oklch(0.8 0.13 75);
+	--bad: oklch(0.69 0.19 25);
+	--warn-ink: var(--warn);
+	--acc-w: color-mix(in oklab, var(--acc) 16%, transparent);
+	--warn-w: color-mix(in oklab, var(--warn) 15%, var(--bg));
+	--bad-w: color-mix(in oklab, var(--bad) 20%, var(--bg));
+	--veil: color-mix(in oklab, var(--bg) 84%, transparent);
+	--scrim: rgba(0, 0, 0, 0.55);
+	color-scheme: dark;
+}
