@@ -682,16 +682,16 @@ commits follow conventional commits, and a pull request raises the version in
 `Cargo.toml` unless it's labeled `no-release`.
 
 a push to `main` that brings a version with no release yet builds phoebe for
-x86_64-linux, aarch64-linux and aarch64-darwin, pushes it to
+x86_64-linux, aarch64-linux and aarch64-darwin, pushes it and the web app to
 `https://cache.r3dlust.com` (key
 `cache.r3dlust.com-1:Wdkf9mes2ued0P7C7CL3Jax1b4KPuJwQpM3h4G/Z+yI=`) pinned as
-`phoebe-<system>`, then tags it `v<version>` and releases it. when a pull
+`phoebe-<system>` and `phoebe-web-<system>`, then tags it `v<version>` and releases it. when a pull
 request already passed its check on the same tree, the release reuses that
 check rather than sitting through the vm test again. a push that releases
 nothing builds nothing. the modules put phoebe in every machine's system
 packages, so a fleet should take a release tag as its input and keep the
 input's own `nixpkgs` (no `follows`): then every machine gets that exact build
-from the cache and none of them compiles rust.
+from the cache and none of them compiles rust or builds the web app.
 
 ---
 

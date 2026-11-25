@@ -1,22 +1,27 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-if [[ $# -ne 2 ]]; then
-  printf 'usage: %s <system> <store-path>\n' "$0" >&2
+if [[ $# -ne 3 ]]; then
+  printf 'usage: %s <package> <system> <store-path>\n' "$0" >&2
   exit 64
 fi
 
 case "$1" in
+  phoebe|phoebe-web) ;;
+  *) printf 'unsupported package: %s\n' "$1" >&2; exit 64 ;;
+esac
+
+case "$2" in
   x86_64-linux|aarch64-linux|aarch64-darwin) ;;
-  *) printf 'unsupported system: %s\n' "$1" >&2; exit 64 ;;
+  *) printf 'unsupported system: %s\n' "$2" >&2; exit 64 ;;
 esac
 
 : "${NIKS3_BIN:?missing niks3 binary}"
 : "${NIKS3_AUTH_TOKEN_SCRIPT:?missing OIDC token command}"
 : "${NIKS3_SERVER_URL:?missing cache URL}"
 
-pin_name="phoebe-$1"
-store_path=$2
+pin_name="$1-$2"
+store_path=$3
 auth=(--server-url "$NIKS3_SERVER_URL" --auth-token-script "$NIKS3_AUTH_TOKEN_SCRIPT")
 
 pins=$("$NIKS3_BIN" pins list "${auth[@]}" --json)

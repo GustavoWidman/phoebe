@@ -119,13 +119,15 @@ jobs:
           : "${NIKS3_AUTH_TOKEN_SCRIPT:?cache discovery gave no OIDC token command}"
           "$NIKS3_BIN" pins list --server-url https://cache.r3dlust.com \
             --auth-token-script "$NIKS3_AUTH_TOKEN_SCRIPT" --json > /dev/null
-      - run: nix build .#default --print-build-logs
-      - name: Publish and pin phoebe
+      - run: nix build .#default .#phoebe-web --print-build-logs
+      - name: Publish and pin phoebe and its web app
         env:
           NIKS3_BIN: ${{ steps.cache.outputs.binary-dir }}/niks3
           NIKS3_AUTH_TOKEN_SCRIPT: ${{ steps.cache.outputs.auth-token-script }}
           NIKS3_SERVER_URL: https://cache.r3dlust.com
-        run: .github/scripts/publish-cache "${{ matrix.system }}" "$(readlink result)"
+        run: |
+          .github/scripts/publish-cache phoebe "${{ matrix.system }}" "$(readlink result)"
+          .github/scripts/publish-cache phoebe-web "${{ matrix.system }}" "$(readlink result-1)"
 
   release:
     needs: cache
