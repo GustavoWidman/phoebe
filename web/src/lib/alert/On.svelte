@@ -1,19 +1,34 @@
-<!-- what an alert is on: its machine, and its service or unit; links when `links` is set -->
+<!--
+	What an alert is on: its machine, then its unit or service, as links when `links` is set.
+	`bare` leaves out the leading "on", for a field already labeled On.
+-->
 <script lang="ts">
-	import { href } from '#lib/router.svelte.ts';
+	import { href, type Route } from '#lib/router.svelte.ts';
 	import type { Alert } from '#lib/wire/types.ts';
 
-	let { alert, links = false }: { alert: Alert; links?: boolean } = $props();
-	const unit = $derived(alert.labels.name);
+	let {
+		alert,
+		links = false,
+		bare = false
+	}: { alert: Alert; links?: boolean; bare?: boolean } = $props();
+
+	const parts = $derived(
+		[
+			alert.machine && {
+				text: alert.machine,
+				to: { screen: 'machine', name: alert.machine } satisfies Route
+			},
+			(alert.labels.name || alert.service) && {
+				text: alert.labels.name ?? alert.service!,
+				to: alert.service ? ({ screen: 'service', name: alert.service } satisfies Route) : null
+			}
+		].filter((p) => !!p)
+	);
 </script>
 
-{#if alert.machine}on {#if links}<a
+{#if parts.length && !bare}{'on '}{/if}{#each parts as p, i (i)}{#if i}{' · '}{/if}{#if links && p.to}<a
 			class="m ul"
-			href={href({ screen: 'machine', name: alert.machine })}
+			href={href(p.to)}
 		>
-			{alert.machine}
-		</a>{:else}<span class="m">{alert.machine}</span>{/if}{/if}{#if alert.service}
-	· {#if links}<a class="m ul" href={href({ screen: 'service', name: alert.service })}>
-			{unit ?? alert.service}
-		</a>{:else}<span class="m">{unit ?? alert.service}</span>{/if}{:else if unit}
-	· <span class="m">{unit}</span>{/if}
+			{p.text}
+		</a>{:else}<span class="m">{p.text}</span>{/if}{/each}

@@ -56,6 +56,7 @@
 
 	const points = (x: Series | null | undefined) =>
 		x?.data.kind === 'lines' ? (x.data.lines[0]?.points ?? []) : [];
+	const hosts = $derived([...new Set(s.probes.map((p) => hostOf(p.target)))].join(', '));
 	const sel = $derived(st.reach.find((r) => r.node === selected));
 	const selSeries = $derived(perNode.get(selected)?.value ?? null);
 	const kinds = $derived([
@@ -90,12 +91,7 @@
 	</div>
 	<h1 class="m">{s.name}</h1>
 	<div class="sub">
-		{#if probed}{s.probes
-				.map((p) => hostOf(p.target))
-				.filter((h, i, all) => all.indexOf(h) === i)
-				.join(', ')},
-		{/if}served
-		{#if s.unit}by <span class="m">{s.unit.name}</span>{/if}
+		{hosts ? `${hosts}, ` : ''}served {#if s.unit}by <span class="m">{s.unit.name}</span>{/if}
 		on <a class="m ul" href={href({ screen: 'machine', name: s.machine })}>{s.machine}</a>
 	</div>
 	<div class="st">

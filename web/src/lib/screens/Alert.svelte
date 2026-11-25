@@ -97,7 +97,7 @@
 		</div>
 		<div>
 			<dt>On</dt>
-			<dd><On alert={a} links /></dd>
+			<dd><On alert={a} links bare /></dd>
 		</div>
 		<div>
 			<dt>Started</dt>
