@@ -16,7 +16,6 @@
 	import Label from '#lib/ui/Label.svelte';
 	import Lines from '#lib/ui/Lines.svelte';
 	import ProbeMap from '#lib/ui/ProbeMap.svelte';
-	import { gaps } from '#lib/ui/plot.ts';
 	import Spark from '#lib/ui/Spark.svelte';
 	import { layout } from '#lib/ui/layout.svelte.ts';
 	import { parseSeries } from '#lib/wire/parse.ts';
@@ -138,7 +137,7 @@
 			now={snap.at}
 			fmt={latency}
 			area
-			gaps={gaps(points(selSeries))}
+			failing={selSeries.failing}
 			h={layout.desk ? 120 : 96}
 			days={range === '7d'}
 		/>
@@ -208,7 +207,7 @@
 			to={band.value.to}
 			now={snap.at}
 			fmt={latency}
-			gaps={st.failing.flatMap((r) => gaps(points(perNode.get(r.node)?.value)))}
+			failing={band.value.failing}
 			h={96}
 			days={range === '7d'}
 		/>

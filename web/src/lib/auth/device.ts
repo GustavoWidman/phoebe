@@ -153,3 +153,12 @@ export const device = {
 		return proof(stored.session, stored.keys.privateKey, method, path, Date.now());
 	}
 };
+
+/** a sign-in address as its machine's name */
+export const name = (via: string) => {
+	try {
+		return new URL(via).hostname.split('.')[0];
+	} catch {
+		return via;
+	}
+};

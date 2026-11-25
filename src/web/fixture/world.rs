@@ -10,6 +10,7 @@ use super::{
     },
 };
 use crate::web::{
+    live::charts::spans,
     query::{Refusal, SeriesQuery},
     wire::*,
 };
@@ -339,6 +340,7 @@ fn series(
         .take_while(|t| *t <= to)
         .collect();
 
+    let mut failing = Vec::new();
     let data = match (of, metric) {
         (Subject::Machine(name), Metric::Latency) => {
             return Err(Refusal::Invalid(format!(
@@ -380,12 +382,23 @@ fn series(
             if spec.probes.is_empty() {
                 return Err(Refusal::Invalid(format!("{name} has no probes")));
             }
-            match node {
-                Some(node) => {
-                    let node = NODES
+            let probing: Vec<&str> = match node {
+                Some(node) => vec![
+                    *NODES
                         .iter()
                         .find(|n| **n == node.0)
-                        .ok_or_else(|| Refusal::Missing(format!("no node {node}")))?;
+                        .ok_or_else(|| Refusal::Missing(format!("no node {node}")))?,
+                ],
+                None => NODES.to_vec(),
+            };
+            let failed: Vec<bool> = times
+                .iter()
+                .map(|t| probing.iter().any(|node| slowest(spec, node, *t).is_none()))
+                .collect();
+            failing = spans(&failed, &times);
+            match node {
+                Some(node) => {
+                    let node = probing[0];
                     SeriesData::Lines {
                         lines: vec![Line {
                             name: (*node).into(),
@@ -413,6 +426,7 @@ fn series(
         from: Ms(from),
         to: Ms(to),
         data,
+        failing,
     })
 }
 

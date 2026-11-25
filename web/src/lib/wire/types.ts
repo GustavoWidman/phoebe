@@ -222,6 +222,8 @@ export type Series = {
   from: Ms;
   to: Ms;
   data: SeriesData;
+  /** for a service's latency, the spans a probe failed (from `node`, or from any node for the band), as against the nulls where nothing was measured at all; empty for a machine */
+  failing: Array<[Ms, Ms]>;
 };
 
 export type Subject = { machine: Hostname } | { service: ServiceName };

@@ -6,7 +6,7 @@
 
 pub mod alertmanager;
 pub mod alerts;
-mod charts;
+pub mod charts;
 pub mod hook;
 pub mod logs;
 pub mod loki;
@@ -407,10 +407,15 @@ impl Live {
             .into_iter()
             .collect::<eyre::Result<Vec<_>>>()
             .map_err(unavailable)?;
-        let data = match (chart.by_node, node) {
-            (false, _) => charts::lines(answers, &grid),
-            (true, Some(node)) => charts::node_line(node, &answers[0].1, &grid),
-            (true, None) => charts::band(&answers[0].1, &grid),
+        let (data, failing) = match (chart.by_node, node) {
+            (false, _) => (charts::lines(answers, &grid), Vec::new()),
+            (true, node) => (
+                match node {
+                    Some(node) => charts::node_line(node, &answers[0].1, &grid),
+                    None => charts::band(&answers[0].1, &grid),
+                },
+                charts::failing(&answers[1].1, node, &grid),
+            ),
         };
         Ok(Series {
             of: of.clone(),
@@ -418,6 +423,7 @@ impl Live {
             from: Ms(from),
             to: Ms(to),
             data,
+            failing,
         })
     }
 

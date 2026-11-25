@@ -4,7 +4,7 @@
 -->
 <script lang="ts">
 	import { account } from '#lib/auth/account.svelte.ts';
-	import { name } from '#lib/auth/access.ts';
+	import { name } from '#lib/auth/device.ts';
 	import { date } from '#lib/derive/format.ts';
 	import Choices from '#lib/ui/Choices.svelte';
 	import Label from '#lib/ui/Label.svelte';

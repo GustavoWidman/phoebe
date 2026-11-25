@@ -8,8 +8,7 @@
  */
 import { parseHello, parseSignedIn } from '#lib/wire/parse.ts';
 import type { Ms } from '#lib/wire/types.ts';
-import { name } from './access.ts';
-import { device, due, signature, signinMessage, type Session } from './device.ts';
+import { device, due, name, signature, signinMessage, type Session } from './device.ts';
 
 export { name };
 
