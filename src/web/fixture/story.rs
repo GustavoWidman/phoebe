@@ -31,6 +31,9 @@ pub const fn brt(hours: i64, minutes: i64, seconds: i64) -> i64 {
 
 /// where the timeline starts
 pub const START: i64 = brt(15, 42, 0);
+/// the last thing that happens; the fleet is all clear from here on
+#[cfg(test)]
+pub const SETTLED: i64 = LAPTOP_WAKES;
 /// the scrape interval, which every moment the fleet shows is a multiple of
 pub const STEP: i64 = 15 * SECOND;
 /// how far back series, logs and alerts reach
