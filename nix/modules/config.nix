@@ -436,6 +436,18 @@ let
           ''
       );
     };
+    # loki logs an error for every query a client gives up on, a browser
+    # closing a log tail among them. shipped back into loki, those lines
+    # would swamp the very tail being read
+    transforms.quiet = {
+      type = "filter";
+      inputs = [ "labelled" ];
+      condition =
+        if journald then
+          ''!(.unit == "loki.service" && contains(string(.message) ?? "", "context canceled"))''
+        else
+          ''!(.file == "/var/log/phoebe-loki.log" && contains(string(.message) ?? "", "context canceled"))'';
+    };
     sinks = {
       metrics = {
         type = "prometheus_exporter";
@@ -450,7 +462,7 @@ let
         node:
         nameValuePair "loki_${node}" {
           type = "loki";
-          inputs = [ "labelled" ];
+          inputs = [ "quiet" ];
           endpoint = "http://${at node ports.loki}";
           encoding.codec = "text";
           labels = {
