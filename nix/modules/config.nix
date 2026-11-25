@@ -224,7 +224,7 @@ let
         ++ mapAttrsToList (
           name: service:
           (rule "UnitFailed" "page" "${unitSeries service} == 1" "1m"
-            "${service.unit} of ${name} failed on {{ $labels.machine }}"
+            "${name} failed on {{ $labels.machine }}"
           )
           // {
             labels = {

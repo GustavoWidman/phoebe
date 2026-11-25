@@ -268,7 +268,7 @@ let
                   service = "web";
                   severity = "page";
                 };
-                exp_annotations.summary = "web.service of web failed on n1";
+                exp_annotations.summary = "web failed on n1";
               }
               {
                 exp_labels = node "n1" // {
@@ -284,7 +284,7 @@ let
                   service = "coeus";
                   severity = "page";
                 };
-                exp_annotations.summary = "org.nixos.coeusd of coeus failed on n3";
+                exp_annotations.summary = "coeus failed on n3";
               }
             ];
           }
