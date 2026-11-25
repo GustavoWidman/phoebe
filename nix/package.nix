@@ -60,6 +60,20 @@ let
       );
     }
   );
+
+  # the tests also read the web app's contract and types, which the package
+  # itself never needs
+  checkArgs = args // {
+    inherit cargoArtifacts;
+    src = lib.fileset.toSource {
+      inherit root;
+      fileset = lib.fileset.unions [
+        sources
+        ../contract/web.json
+        ../web/src/lib/wire/types.ts
+      ];
+    };
+  };
 in
 craneLib.buildPackage (
   args
@@ -69,7 +83,7 @@ craneLib.buildPackage (
     doCheck = false;
 
     passthru.checks = {
-      test = craneLib.cargoTest (args // { inherit cargoArtifacts; });
+      test = craneLib.cargoTest checkArgs;
       clippy = craneLib.cargoClippy (
         args
         // {

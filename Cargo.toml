@@ -7,3 +7,18 @@ license = "MIT"
 repository = "https://github.com/GustavoWidman/phoebe"
 
 [dependencies]
+axum = "0.8.9"
+clap = { version = "4.6.6", features = ["derive", "env"] }
+env_logger = "0.11.11"
+eyre = "0.6.12"
+futures-util = "0.3.34"
+log = "0.4.33"
+serde = { version = "1.0.229", features = ["derive"] }
+serde_json = "1.0.154"
+tokio = { version = "1.53.1", features = ["macros", "net", "rt-multi-thread", "signal", "sync", "time"] }
+tower-http = { version = "0.7.1", features = ["fs"] }
+
+[dev-dependencies]
+http-body-util = "0.1.5"
+tower = { version = "0.5.3", features = ["util"] }
+ts-rs = { version = "12.0.1", default-features = false, features = ["serde-compat"] }

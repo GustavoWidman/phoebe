@@ -1,0 +1,1632 @@
+{
+  "hello": {
+    "signin": [
+      "https://lab.tail4a3ea.ts.net:45731",
+      "https://oracle-1.tail4a3ea.ts.net:45731"
+    ],
+    "build": "4f2a9c1e07b3",
+    "schema": 1
+  },
+  "stream": [
+    {
+      "kind": "snapshot",
+      "schema": 1,
+      "at": 1795632120000,
+      "served_by": "lab",
+      "nodes": [
+        {
+          "name": "altar",
+          "prometheus": true,
+          "loki": true,
+          "alertmanager": true,
+          "blackbox": true
+        },
+        {
+          "name": "lab",
+          "prometheus": true,
+          "loki": true,
+          "alertmanager": true,
+          "blackbox": true
+        },
+        {
+          "name": "oracle-1",
+          "prometheus": true,
+          "loki": true,
+          "alertmanager": true,
+          "blackbox": true
+        },
+        {
+          "name": "oracle-2",
+          "prometheus": true,
+          "loki": true,
+          "alertmanager": true,
+          "blackbox": true
+        }
+      ],
+      "machines": [
+        {
+          "name": "altar",
+          "os": "darwin",
+          "always_on": true,
+          "hardware": {
+            "arch": "aarch64",
+            "cores": 10,
+            "mem_bytes": 34359738368,
+            "disk_bytes": 1000000000000
+          },
+          "state": {
+            "kind": "up",
+            "since": 1794674520000,
+            "booted_at": 1794674520000,
+            "vitals": {
+              "cpu": 0.1471,
+              "mem": 0.6801,
+              "disk": 0.4111,
+              "load1": 1.74
+            },
+            "units": {
+              "active": 87,
+              "failed": []
+            }
+          }
+        },
+        {
+          "name": "desktop-nixos",
+          "os": "nixos",
+          "always_on": false,
+          "hardware": {
+            "arch": "x86_64",
+            "cores": 16,
+            "mem_bytes": 34359738368,
+            "disk_bytes": 1000000000000
+          },
+          "state": {
+            "kind": "resting",
+            "since": 1795572600000
+          }
+        },
+        {
+          "name": "lab",
+          "os": "nixos",
+          "always_on": true,
+          "hardware": {
+            "arch": "x86_64",
+            "cores": 16,
+            "mem_bytes": 68719476736,
+            "disk_bytes": 2000000000000
+          },
+          "state": {
+            "kind": "up",
+            "since": 1795045320000,
+            "booted_at": 1795045320000,
+            "vitals": {
+              "cpu": 0.8311,
+              "mem": 0.6204,
+              "disk": 0.3259,
+              "load1": 14.05
+            },
+            "units": {
+              "active": 198,
+              "failed": []
+            }
+          }
+        },
+        {
+          "name": "laptop-mac",
+          "os": "darwin",
+          "always_on": false,
+          "hardware": {
+            "arch": "aarch64",
+            "cores": 12,
+            "mem_bytes": 38654705664,
+            "disk_bytes": 1000000000000
+          },
+          "state": {
+            "kind": "resting",
+            "since": 1795622700000
+          }
+        },
+        {
+          "name": "oracle-1",
+          "os": "nixos",
+          "always_on": true,
+          "hardware": {
+            "arch": "aarch64",
+            "cores": 4,
+            "mem_bytes": 25769803776,
+            "disk_bytes": 200000000000
+          },
+          "state": {
+            "kind": "up",
+            "since": 1793630520000,
+            "booted_at": 1793630520000,
+            "vitals": {
+              "cpu": 0.1693,
+              "mem": 0.6094,
+              "disk": 0.4722,
+              "load1": 1.26
+            },
+            "units": {
+              "active": 213,
+              "failed": [
+                {
+                  "name": "lavalink.service",
+                  "since": 1795629510000
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "oracle-2",
+          "os": "nixos",
+          "always_on": true,
+          "hardware": {
+            "arch": "aarch64",
+            "cores": 4,
+            "mem_bytes": 25769803776,
+            "disk_bytes": 200000000000
+          },
+          "state": {
+            "kind": "up",
+            "since": 1793630520000,
+            "booted_at": 1793630520000,
+            "vitals": {
+              "cpu": 0.1134,
+              "mem": 0.4338,
+              "disk": 0.7083,
+              "load1": 0.61
+            },
+            "units": {
+              "active": 231,
+              "failed": []
+            }
+          }
+        }
+      ],
+      "services": [
+        {
+          "name": "adguard",
+          "machine": "oracle-2",
+          "unit": {
+            "name": "adguardhome.service",
+            "state": "active",
+            "since": 1793630520000
+          },
+          "probes": [
+            {
+              "kind": "http",
+              "target": "https://dns.r3dlust.com/dns-query?dns=AAABAAABAAAAAAAAB2V4YW1wbGUDY29tAAABAAE",
+              "tls": true,
+              "cert_expires_at": 1800123548652,
+              "views": [
+                {
+                  "node": "altar",
+                  "ok": true,
+                  "latency_ms": 23.69,
+                  "since": 1794674520000
+                },
+                {
+                  "node": "lab",
+                  "ok": true,
+                  "latency_ms": 25.72,
+                  "since": 1795045320000
+                },
+                {
+                  "node": "oracle-1",
+                  "ok": true,
+                  "latency_ms": 2.54,
+                  "since": 1793630520000
+                },
+                {
+                  "node": "oracle-2",
+                  "ok": true,
+                  "latency_ms": 0.85,
+                  "since": 1793630520000
+                }
+              ]
+            },
+            {
+              "kind": "tcp",
+              "target": "dns.r3dlust.com:853",
+              "tls": true,
+              "cert_expires_at": 1798445616374,
+              "views": [
+                {
+                  "node": "altar",
+                  "ok": true,
+                  "latency_ms": 26.57,
+                  "since": 1794674520000
+                },
+                {
+                  "node": "lab",
+                  "ok": true,
+                  "latency_ms": 25.28,
+                  "since": 1795045320000
+                },
+                {
+                  "node": "oracle-1",
+                  "ok": true,
+                  "latency_ms": 2.42,
+                  "since": 1793630520000
+                },
+                {
+                  "node": "oracle-2",
+                  "ok": true,
+                  "latency_ms": 1.61,
+                  "since": 1793630520000
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "copyparty",
+          "machine": "oracle-2",
+          "unit": {
+            "name": "copyparty.service",
+            "state": "active",
+            "since": 1793630520000
+          },
+          "probes": [
+            {
+              "kind": "http",
+              "target": "https://files.r3dlust.com",
+              "tls": true,
+              "cert_expires_at": 1798274842389,
+              "views": [
+                {
+                  "node": "altar",
+                  "ok": true,
+                  "latency_ms": 34.86,
+                  "since": 1794674520000
+                },
+                {
+                  "node": "lab",
+                  "ok": true,
+                  "latency_ms": 26.64,
+                  "since": 1795045320000
+                },
+                {
+                  "node": "oracle-1",
+                  "ok": true,
+                  "latency_ms": 6.89,
+                  "since": 1793630520000
+                },
+                {
+                  "node": "oracle-2",
+                  "ok": true,
+                  "latency_ms": 5.49,
+                  "since": 1793630520000
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "derp",
+          "machine": "oracle-2",
+          "unit": {
+            "name": "tailscale-derper.service",
+            "state": "active",
+            "since": 1793630520000
+          },
+          "probes": [
+            {
+              "kind": "http",
+              "target": "https://derp.r3dlust.com",
+              "tls": true,
+              "cert_expires_at": 1796407200000,
+              "views": [
+                {
+                  "node": "altar",
+                  "ok": true,
+                  "latency_ms": 26.11,
+                  "since": 1794674520000
+                },
+                {
+                  "node": "lab",
+                  "ok": true,
+                  "latency_ms": 27.69,
+                  "since": 1795045320000
+                },
+                {
+                  "node": "oracle-1",
+                  "ok": true,
+                  "latency_ms": 2.9,
+                  "since": 1793630520000
+                },
+                {
+                  "node": "oracle-2",
+                  "ok": true,
+                  "latency_ms": 0.64,
+                  "since": 1793630520000
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "heimdall",
+          "machine": "oracle-1",
+          "unit": {
+            "name": "heimdall.service",
+            "state": "active",
+            "since": 1793630520000
+          },
+          "probes": [
+            {
+              "kind": "http",
+              "target": "https://heimdall.r3dlust.com/api/health",
+              "tls": true,
+              "cert_expires_at": 1802497664104,
+              "views": [
+                {
+                  "node": "altar",
+                  "ok": true,
+                  "latency_ms": 31.77,
+                  "since": 1794674520000
+                },
+                {
+                  "node": "lab",
+                  "ok": true,
+                  "latency_ms": 27.36,
+                  "since": 1795045320000
+                },
+                {
+                  "node": "oracle-1",
+                  "ok": true,
+                  "latency_ms": 3.15,
+                  "since": 1793630520000
+                },
+                {
+                  "node": "oracle-2",
+                  "ok": true,
+                  "latency_ms": 5.01,
+                  "since": 1793630520000
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "lavalink",
+          "machine": "oracle-1",
+          "unit": {
+            "name": "lavalink.service",
+            "state": "failed",
+            "since": 1795629510000
+          },
+          "probes": []
+        },
+        {
+          "name": "mail",
+          "machine": "oracle-2",
+          "unit": {
+            "name": "postfix.service",
+            "state": "active",
+            "since": 1793630520000
+          },
+          "probes": [
+            {
+              "kind": "smtp",
+              "target": "mail.r3dlust.com:465",
+              "tls": true,
+              "cert_expires_at": 1802569865131,
+              "views": [
+                {
+                  "node": "altar",
+                  "ok": true,
+                  "latency_ms": 27.8,
+                  "since": 1794674520000
+                },
+                {
+                  "node": "lab",
+                  "ok": true,
+                  "latency_ms": 29.48,
+                  "since": 1795045320000
+                },
+                {
+                  "node": "oracle-1",
+                  "ok": true,
+                  "latency_ms": 5.36,
+                  "since": 1793630520000
+                },
+                {
+                  "node": "oracle-2",
+                  "ok": true,
+                  "latency_ms": 2.2,
+                  "since": 1793630520000
+                }
+              ]
+            },
+            {
+              "kind": "imap",
+              "target": "mail.r3dlust.com:993",
+              "tls": true,
+              "cert_expires_at": 1802569865131,
+              "views": [
+                {
+                  "node": "altar",
+                  "ok": true,
+                  "latency_ms": 22.94,
+                  "since": 1794674520000
+                },
+                {
+                  "node": "lab",
+                  "ok": true,
+                  "latency_ms": 31.72,
+                  "since": 1795045320000
+                },
+                {
+                  "node": "oracle-1",
+                  "ok": true,
+                  "latency_ms": 4.1,
+                  "since": 1793630520000
+                },
+                {
+                  "node": "oracle-2",
+                  "ok": true,
+                  "latency_ms": 2.3,
+                  "since": 1793630520000
+                }
+              ]
+            },
+            {
+              "kind": "http",
+              "target": "https://mail.r3dlust.com",
+              "tls": true,
+              "cert_expires_at": 1800531579020,
+              "views": [
+                {
+                  "node": "altar",
+                  "ok": true,
+                  "latency_ms": 29.91,
+                  "since": 1794674520000
+                },
+                {
+                  "node": "lab",
+                  "ok": true,
+                  "latency_ms": 26.92,
+                  "since": 1795045320000
+                },
+                {
+                  "node": "oracle-1",
+                  "ok": true,
+                  "latency_ms": 4.4,
+                  "since": 1793630520000
+                },
+                {
+                  "node": "oracle-2",
+                  "ok": true,
+                  "latency_ms": 2.75,
+                  "since": 1793630520000
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "mcsmanager",
+          "machine": "oracle-2",
+          "unit": {
+            "name": "arion-mcsmanager.service",
+            "state": "active",
+            "since": 1793630520000
+          },
+          "probes": [
+            {
+              "kind": "http",
+              "target": "https://minecraft.r3dlust.com",
+              "tls": true,
+              "cert_expires_at": 1799232590962,
+              "views": [
+                {
+                  "node": "altar",
+                  "ok": true,
+                  "latency_ms": 31.68,
+                  "since": 1794674520000
+                },
+                {
+                  "node": "lab",
+                  "ok": true,
+                  "latency_ms": 31.3,
+                  "since": 1795045320000
+                },
+                {
+                  "node": "oracle-1",
+                  "ok": true,
+                  "latency_ms": 12.14,
+                  "since": 1793630520000
+                },
+                {
+                  "node": "oracle-2",
+                  "ok": true,
+                  "latency_ms": 5.64,
+                  "since": 1793630520000
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "nfs",
+          "machine": "lab",
+          "unit": {
+            "name": "nfs-server.service",
+            "state": "active",
+            "since": 1795045320000
+          },
+          "probes": [
+            {
+              "kind": "tcp",
+              "target": "lab.tail4a3ea.ts.net:2049",
+              "tls": false,
+              "cert_expires_at": null,
+              "views": [
+                {
+                  "node": "altar",
+                  "ok": true,
+                  "latency_ms": 0.93,
+                  "since": 1794674520000
+                },
+                {
+                  "node": "lab",
+                  "ok": true,
+                  "latency_ms": 0.57,
+                  "since": 1795045320000
+                },
+                {
+                  "node": "oracle-1",
+                  "ok": true,
+                  "latency_ms": 27.17,
+                  "since": 1793630520000
+                },
+                {
+                  "node": "oracle-2",
+                  "ok": true,
+                  "latency_ms": 29.22,
+                  "since": 1793630520000
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "niks3",
+          "machine": "oracle-1",
+          "unit": {
+            "name": "niks3.service",
+            "state": "active",
+            "since": 1793630520000
+          },
+          "probes": [
+            {
+              "kind": "http",
+              "target": "https://cache.r3dlust.com/nix-cache-info",
+              "tls": true,
+              "cert_expires_at": 1803334788158,
+              "views": [
+                {
+                  "node": "altar",
+                  "ok": true,
+                  "latency_ms": 34.97,
+                  "since": 1794674520000
+                },
+                {
+                  "node": "lab",
+                  "ok": true,
+                  "latency_ms": 33.62,
+                  "since": 1795045320000
+                },
+                {
+                  "node": "oracle-1",
+                  "ok": true,
+                  "latency_ms": 4.99,
+                  "since": 1793630520000
+                },
+                {
+                  "node": "oracle-2",
+                  "ok": true,
+                  "latency_ms": 6.1,
+                  "since": 1793630520000
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "portfolio",
+          "machine": "oracle-2",
+          "unit": null,
+          "probes": [
+            {
+              "kind": "http",
+              "target": "https://r3dlust.com",
+              "tls": true,
+              "cert_expires_at": 1798445616374,
+              "views": [
+                {
+                  "node": "altar",
+                  "ok": true,
+                  "latency_ms": 32.61,
+                  "since": 1794674520000
+                },
+                {
+                  "node": "lab",
+                  "ok": false,
+                  "latency_ms": 10000.0,
+                  "since": 1795630862000
+                },
+                {
+                  "node": "oracle-1",
+                  "ok": true,
+                  "latency_ms": 4.83,
+                  "since": 1793630520000
+                },
+                {
+                  "node": "oracle-2",
+                  "ok": true,
+                  "latency_ms": 3.46,
+                  "since": 1793630520000
+                }
+              ]
+            },
+            {
+              "kind": "http",
+              "target": "https://blog.r3dlust.com",
+              "tls": true,
+              "cert_expires_at": 1800531579020,
+              "views": [
+                {
+                  "node": "altar",
+                  "ok": true,
+                  "latency_ms": 53.11,
+                  "since": 1794674520000
+                },
+                {
+                  "node": "lab",
+                  "ok": true,
+                  "latency_ms": 26.08,
+                  "since": 1795045320000
+                },
+                {
+                  "node": "oracle-1",
+                  "ok": true,
+                  "latency_ms": 5.24,
+                  "since": 1793630520000
+                },
+                {
+                  "node": "oracle-2",
+                  "ok": true,
+                  "latency_ms": 4.02,
+                  "since": 1793630520000
+                }
+              ]
+            },
+            {
+              "kind": "http",
+              "target": "https://guswid.com",
+              "tls": true,
+              "cert_expires_at": 1803325449036,
+              "views": [
+                {
+                  "node": "altar",
+                  "ok": true,
+                  "latency_ms": 33.85,
+                  "since": 1794674520000
+                },
+                {
+                  "node": "lab",
+                  "ok": true,
+                  "latency_ms": 34.25,
+                  "since": 1795045320000
+                },
+                {
+                  "node": "oracle-1",
+                  "ok": true,
+                  "latency_ms": 6.33,
+                  "since": 1793630520000
+                },
+                {
+                  "node": "oracle-2",
+                  "ok": true,
+                  "latency_ms": 4.31,
+                  "since": 1793630520000
+                }
+              ]
+            },
+            {
+              "kind": "http",
+              "target": "https://blog.guswid.com",
+              "tls": true,
+              "cert_expires_at": 1803401487912,
+              "views": [
+                {
+                  "node": "altar",
+                  "ok": true,
+                  "latency_ms": 31.48,
+                  "since": 1794674520000
+                },
+                {
+                  "node": "lab",
+                  "ok": true,
+                  "latency_ms": 29.18,
+                  "since": 1795045320000
+                },
+                {
+                  "node": "oracle-1",
+                  "ok": true,
+                  "latency_ms": 6.3,
+                  "since": 1793630520000
+                },
+                {
+                  "node": "oracle-2",
+                  "ok": true,
+                  "latency_ms": 12.75,
+                  "since": 1793630520000
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "rocky-bot",
+          "machine": "oracle-1",
+          "unit": {
+            "name": "rocky-bot.service",
+            "state": "active",
+            "since": 1793630520000
+          },
+          "probes": []
+        },
+        {
+          "name": "rustfs",
+          "machine": "lab",
+          "unit": {
+            "name": "rustfs.service",
+            "state": "active",
+            "since": 1795045320000
+          },
+          "probes": [
+            {
+              "kind": "http",
+              "target": "http://lab.tail4a3ea.ts.net:9000/health",
+              "tls": false,
+              "cert_expires_at": null,
+              "views": [
+                {
+                  "node": "altar",
+                  "ok": true,
+                  "latency_ms": 1.35,
+                  "since": 1794674520000
+                },
+                {
+                  "node": "lab",
+                  "ok": true,
+                  "latency_ms": 1.42,
+                  "since": 1795045320000
+                },
+                {
+                  "node": "oracle-1",
+                  "ok": true,
+                  "latency_ms": 26.77,
+                  "since": 1793630520000
+                },
+                {
+                  "node": "oracle-2",
+                  "ok": true,
+                  "latency_ms": 27.82,
+                  "since": 1793630520000
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "tailscale-proxy",
+          "machine": "oracle-2",
+          "unit": null,
+          "probes": [
+            {
+              "kind": "http",
+              "target": "https://tailscale.r3dlust.com/key",
+              "tls": true,
+              "cert_expires_at": 1799349648090,
+              "views": [
+                {
+                  "node": "altar",
+                  "ok": true,
+                  "latency_ms": 25.15,
+                  "since": 1794674520000
+                },
+                {
+                  "node": "lab",
+                  "ok": true,
+                  "latency_ms": 23.5,
+                  "since": 1795045320000
+                },
+                {
+                  "node": "oracle-1",
+                  "ok": true,
+                  "latency_ms": 3.79,
+                  "since": 1793630520000
+                },
+                {
+                  "node": "oracle-2",
+                  "ok": true,
+                  "latency_ms": 2.55,
+                  "since": 1793630520000
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "taproot",
+          "machine": "lab",
+          "unit": {
+            "name": "taproot.service",
+            "state": "active",
+            "since": 1795045320000
+          },
+          "probes": [
+            {
+              "kind": "http",
+              "target": "https://lab.tail4a3ea.ts.net:8317/healthz",
+              "tls": true,
+              "cert_expires_at": 1799058271551,
+              "views": [
+                {
+                  "node": "altar",
+                  "ok": true,
+                  "latency_ms": 1.87,
+                  "since": 1794674520000
+                },
+                {
+                  "node": "lab",
+                  "ok": true,
+                  "latency_ms": 1.84,
+                  "since": 1795045320000
+                },
+                {
+                  "node": "oracle-1",
+                  "ok": true,
+                  "latency_ms": 30.34,
+                  "since": 1793630520000
+                },
+                {
+                  "node": "oracle-2",
+                  "ok": true,
+                  "latency_ms": 23.25,
+                  "since": 1793630520000
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "teamspeak6",
+          "machine": "oracle-1",
+          "unit": {
+            "name": "podman-teamspeak6.service",
+            "state": "active",
+            "since": 1793630520000
+          },
+          "probes": [
+            {
+              "kind": "tcp",
+              "target": "rockyclan.com:30033",
+              "tls": false,
+              "cert_expires_at": null,
+              "views": [
+                {
+                  "node": "altar",
+                  "ok": true,
+                  "latency_ms": 26.24,
+                  "since": 1794674520000
+                },
+                {
+                  "node": "lab",
+                  "ok": true,
+                  "latency_ms": 25.92,
+                  "since": 1795045320000
+                },
+                {
+                  "node": "oracle-1",
+                  "ok": true,
+                  "latency_ms": 1.42,
+                  "since": 1793630520000
+                },
+                {
+                  "node": "oracle-2",
+                  "ok": true,
+                  "latency_ms": 1.94,
+                  "since": 1793630520000
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "yt-cipher",
+          "machine": "oracle-1",
+          "unit": {
+            "name": "podman-yt-cipher.service",
+            "state": "active",
+            "since": 1793630520000
+          },
+          "probes": []
+        }
+      ],
+      "alerts": [
+        {
+          "id": "0dc6658a43bd5ed1",
+          "rule": "UnitFailed",
+          "severity": "page",
+          "state": {
+            "kind": "firing"
+          },
+          "starts_at": 1795629570000,
+          "machine": "oracle-1",
+          "service": "lavalink",
+          "summary": "lavalink.service of lavalink failed on oracle-1",
+          "seen_by": [
+            "altar",
+            "lab",
+            "oracle-1",
+            "oracle-2"
+          ],
+          "labels": {
+            "alertname": "UnitFailed",
+            "instance": "100.84.113.80:9100",
+            "job": "node",
+            "machine": "oracle-1",
+            "name": "lavalink.service",
+            "service": "lavalink",
+            "severity": "page",
+            "state": "failed"
+          }
+        },
+        {
+          "id": "c65de8af70af8920",
+          "rule": "CertExpiring",
+          "severity": "info",
+          "state": {
+            "kind": "firing"
+          },
+          "starts_at": 1795198200000,
+          "machine": "oracle-2",
+          "service": "derp",
+          "summary": "the certificate of https://derp.r3dlust.com expires in 8d 23h 18m 0s",
+          "seen_by": [
+            "altar",
+            "lab",
+            "oracle-1",
+            "oracle-2"
+          ],
+          "labels": {
+            "alertname": "CertExpiring",
+            "machine": "oracle-2",
+            "service": "derp",
+            "severity": "info",
+            "target": "https://derp.r3dlust.com"
+          }
+        },
+        {
+          "id": "25d13c49499f456f",
+          "rule": "DiskAlmostFull",
+          "severity": "page",
+          "state": {
+            "kind": "resolved",
+            "at": 1795623626000
+          },
+          "starts_at": 1795615620000,
+          "machine": "oracle-2",
+          "service": null,
+          "summary": "/ on oracle-2 is 9.64% free",
+          "seen_by": [
+            "altar",
+            "lab",
+            "oracle-1",
+            "oracle-2"
+          ],
+          "labels": {
+            "alertname": "DiskAlmostFull",
+            "device": "/dev/sda1",
+            "fstype": "ext4",
+            "instance": "100.119.88.94:9100",
+            "job": "node",
+            "machine": "oracle-2",
+            "mountpoint": "/",
+            "severity": "page"
+          }
+        }
+      ]
+    },
+    {
+      "kind": "expired"
+    }
+  ],
+  "series": [
+    {
+      "of": {
+        "machine": "oracle-1"
+      },
+      "metric": "cpu",
+      "from": 1795628520000,
+      "to": 1795632120000,
+      "data": {
+        "kind": "lines",
+        "lines": [
+          {
+            "name": "cpu",
+            "points": [
+              [
+                1795628535000,
+                0.127
+              ],
+              [
+                1795628550000,
+                0.1281
+              ],
+              [
+                1795628565000,
+                0.1296
+              ]
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "of": {
+        "machine": "oracle-1"
+      },
+      "metric": "mem",
+      "from": 1795628520000,
+      "to": 1795632120000,
+      "data": {
+        "kind": "lines",
+        "lines": [
+          {
+            "name": "mem",
+            "points": [
+              [
+                1795628535000,
+                0.7164
+              ],
+              [
+                1795628550000,
+                0.717
+              ],
+              [
+                1795628565000,
+                0.7177
+              ]
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "of": {
+        "machine": "oracle-2"
+      },
+      "metric": "disk",
+      "from": 1795628520000,
+      "to": 1795632120000,
+      "data": {
+        "kind": "lines",
+        "lines": [
+          {
+            "name": "disk",
+            "points": [
+              [
+                1795628535000,
+                0.7081
+              ],
+              [
+                1795628550000,
+                0.7081
+              ],
+              [
+                1795628565000,
+                0.7081
+              ]
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "of": {
+        "machine": "lab"
+      },
+      "metric": "load",
+      "from": 1795628520000,
+      "to": 1795632120000,
+      "data": {
+        "kind": "lines",
+        "lines": [
+          {
+            "name": "load",
+            "points": [
+              [
+                1795628535000,
+                1.94
+              ],
+              [
+                1795628550000,
+                1.92
+              ],
+              [
+                1795628565000,
+                1.9
+              ]
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "of": {
+        "machine": "lab"
+      },
+      "metric": "net",
+      "from": 1795628520000,
+      "to": 1795632120000,
+      "data": {
+        "kind": "lines",
+        "lines": [
+          {
+            "name": "rx",
+            "points": [
+              [
+                1795628535000,
+                351958.0
+              ],
+              [
+                1795628550000,
+                355203.0
+              ],
+              [
+                1795628565000,
+                360433.0
+              ]
+            ]
+          },
+          {
+            "name": "tx",
+            "points": [
+              [
+                1795628535000,
+                204290.0
+              ],
+              [
+                1795628550000,
+                202803.0
+              ],
+              [
+                1795628565000,
+                200449.0
+              ]
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "of": {
+        "service": "portfolio"
+      },
+      "metric": "latency",
+      "from": 1795628520000,
+      "to": 1795632120000,
+      "data": {
+        "kind": "band",
+        "points": [
+          [
+            1795628535000,
+            4.35,
+            18.155,
+            30.61
+          ],
+          [
+            1795628550000,
+            4.37,
+            26.055,
+            68.75
+          ],
+          [
+            1795628565000,
+            4.41,
+            18.205,
+            64.72
+          ]
+        ]
+      }
+    },
+    {
+      "of": {
+        "service": "portfolio"
+      },
+      "metric": "latency",
+      "from": 1795628520000,
+      "to": 1795632120000,
+      "data": {
+        "kind": "lines",
+        "lines": [
+          {
+            "name": "lab",
+            "points": [
+              [
+                1795628535000,
+                30.61
+              ],
+              [
+                1795628550000,
+                46.04
+              ],
+              [
+                1795628565000,
+                30.32
+              ]
+            ]
+          }
+        ]
+      }
+    }
+  ],
+  "logs": {
+    "lines": [
+      {
+        "at": 1795629510200,
+        "machine": "oracle-1",
+        "unit": "systemd",
+        "level": "error",
+        "text": "lavalink.service: Failed with result 'exit-code'."
+      },
+      {
+        "at": 1795629510000,
+        "machine": "oracle-1",
+        "unit": "systemd",
+        "level": "error",
+        "text": "lavalink.service: Start request repeated too quickly."
+      },
+      {
+        "at": 1795629505800,
+        "machine": "oracle-1",
+        "unit": "systemd",
+        "level": "error",
+        "text": "lavalink.service: Main process exited, code=exited, status=1/FAILURE"
+      },
+      {
+        "at": 1795629505500,
+        "machine": "oracle-1",
+        "unit": "lavalink.service",
+        "level": "error",
+        "text": "java.lang.OutOfMemoryError: Java heap space"
+      },
+      {
+        "at": 1795629489500,
+        "machine": "oracle-1",
+        "unit": "systemd",
+        "level": "warn",
+        "text": "lavalink.service: Scheduled restart job, restart counter is at 4."
+      },
+      {
+        "at": 1795629485300,
+        "machine": "oracle-1",
+        "unit": "systemd",
+        "level": "error",
+        "text": "lavalink.service: Main process exited, code=exited, status=1/FAILURE"
+      }
+    ],
+    "before": "1795629485300-9e2a03127307bc66"
+  },
+  "tail": [
+    {
+      "kind": "lines",
+      "lines": [
+        {
+          "at": 1795629510000,
+          "machine": "oracle-1",
+          "unit": "systemd",
+          "level": "error",
+          "text": "lavalink.service: Start request repeated too quickly."
+        },
+        {
+          "at": 1795629510200,
+          "machine": "oracle-1",
+          "unit": "systemd",
+          "level": "error",
+          "text": "lavalink.service: Failed with result 'exit-code'."
+        }
+      ]
+    },
+    {
+      "kind": "expired"
+    }
+  ],
+  "alerts": [
+    {
+      "id": "0dc6658a43bd5ed1",
+      "rule": "UnitFailed",
+      "severity": "page",
+      "state": {
+        "kind": "firing"
+      },
+      "starts_at": 1795629570000,
+      "machine": "oracle-1",
+      "service": "lavalink",
+      "summary": "lavalink.service of lavalink failed on oracle-1",
+      "seen_by": [
+        "altar",
+        "lab",
+        "oracle-1",
+        "oracle-2"
+      ],
+      "labels": {
+        "alertname": "UnitFailed",
+        "instance": "100.84.113.80:9100",
+        "job": "node",
+        "machine": "oracle-1",
+        "name": "lavalink.service",
+        "service": "lavalink",
+        "severity": "page",
+        "state": "failed"
+      }
+    },
+    {
+      "id": "25d13c49499f456f",
+      "rule": "DiskAlmostFull",
+      "severity": "page",
+      "state": {
+        "kind": "resolved",
+        "at": 1795623626000
+      },
+      "starts_at": 1795615620000,
+      "machine": "oracle-2",
+      "service": null,
+      "summary": "/ on oracle-2 is 9.64% free",
+      "seen_by": [
+        "altar",
+        "lab",
+        "oracle-1",
+        "oracle-2"
+      ],
+      "labels": {
+        "alertname": "DiskAlmostFull",
+        "device": "/dev/sda1",
+        "fstype": "ext4",
+        "instance": "100.119.88.94:9100",
+        "job": "node",
+        "machine": "oracle-2",
+        "mountpoint": "/",
+        "severity": "page"
+      }
+    },
+    {
+      "id": "c65de8af70af8920",
+      "rule": "CertExpiring",
+      "severity": "info",
+      "state": {
+        "kind": "firing"
+      },
+      "starts_at": 1795198200000,
+      "machine": "oracle-2",
+      "service": "derp",
+      "summary": "the certificate of https://derp.r3dlust.com expires in 8d 23h 18m 0s",
+      "seen_by": [
+        "altar",
+        "lab",
+        "oracle-1",
+        "oracle-2"
+      ],
+      "labels": {
+        "alertname": "CertExpiring",
+        "machine": "oracle-2",
+        "service": "derp",
+        "severity": "info",
+        "target": "https://derp.r3dlust.com"
+      }
+    }
+  ],
+  "alert": {
+    "alert": {
+      "id": "25d13c49499f456f",
+      "rule": "DiskAlmostFull",
+      "severity": "page",
+      "state": {
+        "kind": "resolved",
+        "at": 1795623626000
+      },
+      "starts_at": 1795615620000,
+      "machine": "oracle-2",
+      "service": null,
+      "summary": "/ on oracle-2 is 9.64% free",
+      "seen_by": [
+        "altar",
+        "lab",
+        "oracle-1",
+        "oracle-2"
+      ],
+      "labels": {
+        "alertname": "DiskAlmostFull",
+        "device": "/dev/sda1",
+        "fstype": "ext4",
+        "instance": "100.119.88.94:9100",
+        "job": "node",
+        "machine": "oracle-2",
+        "mountpoint": "/",
+        "severity": "page"
+      }
+    },
+    "timeline": [
+      {
+        "kind": "pending",
+        "at": 1795614720000,
+        "node": "oracle-1"
+      },
+      {
+        "kind": "pending",
+        "at": 1795614724000,
+        "node": "lab"
+      },
+      {
+        "kind": "pending",
+        "at": 1795614727000,
+        "node": "oracle-2"
+      },
+      {
+        "kind": "pending",
+        "at": 1795614731000,
+        "node": "altar"
+      },
+      {
+        "kind": "firing",
+        "at": 1795615620000,
+        "node": "oracle-1"
+      },
+      {
+        "kind": "firing",
+        "at": 1795615624000,
+        "node": "lab"
+      },
+      {
+        "kind": "firing",
+        "at": 1795615627000,
+        "node": "oracle-2"
+      },
+      {
+        "kind": "firing",
+        "at": 1795615631000,
+        "node": "altar"
+      },
+      {
+        "kind": "notified",
+        "at": 1795615650000,
+        "by": "altar",
+        "resolved": false
+      },
+      {
+        "kind": "resolved",
+        "at": 1795623615000,
+        "node": "oracle-1"
+      },
+      {
+        "kind": "resolved",
+        "at": 1795623619000,
+        "node": "lab"
+      },
+      {
+        "kind": "resolved",
+        "at": 1795623622000,
+        "node": "oracle-2"
+      },
+      {
+        "kind": "resolved",
+        "at": 1795623626000,
+        "node": "altar"
+      },
+      {
+        "kind": "notified",
+        "at": 1795623656000,
+        "by": "altar",
+        "resolved": true
+      }
+    ],
+    "series": {
+      "of": {
+        "machine": "oracle-2"
+      },
+      "metric": "disk",
+      "from": 1795612020000,
+      "to": 1795627226000,
+      "data": {
+        "kind": "lines",
+        "lines": [
+          {
+            "name": "disk",
+            "points": [
+              [
+                1795612080000,
+                0.8995
+              ],
+              [
+                1795612140000,
+                0.8995
+              ],
+              [
+                1795612200000,
+                0.8995
+              ]
+            ]
+          }
+        ]
+      }
+    }
+  },
+  "fixture_clock": {
+    "t": 0.0,
+    "speed": 0.0,
+    "now": 1795632120000
+  },
+  "other": {
+    "machines": [
+      {
+        "name": "oracle-1",
+        "os": "nixos",
+        "always_on": true,
+        "hardware": null,
+        "state": {
+          "kind": "down",
+          "since": 1795631700000
+        }
+      }
+    ],
+    "units": [
+      {
+        "name": "heimdall.service",
+        "state": "activating",
+        "since": 1795632116000
+      },
+      {
+        "name": "nfs-server.service",
+        "state": "inactive",
+        "since": 1795632030000
+      },
+      {
+        "name": "lavalink.service",
+        "state": "unknown",
+        "since": null
+      }
+    ],
+    "probes": [
+      {
+        "kind": "dns",
+        "target": "dns.r3dlust.com:53",
+        "tls": false,
+        "cert_expires_at": null,
+        "views": [
+          {
+            "node": "altar",
+            "ok": true,
+            "latency_ms": 27.4,
+            "since": 1795545720000
+          }
+        ]
+      }
+    ],
+    "lines": [
+      {
+        "at": 1795632118000,
+        "machine": "lab",
+        "unit": "coeusd.service",
+        "level": "debug",
+        "text": "poll: generation 26.05.20261125 is current"
+      }
+    ]
+  }
+}
