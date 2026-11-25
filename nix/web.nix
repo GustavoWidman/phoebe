@@ -75,6 +75,7 @@ let
         # screens derive from the fleet, and the design gate's own tests
         unit = check "unit" [
           ../contract/web.json
+          ../contract/push.json
           ../web/design/system.md
           ../web/scripts/design-gate.ts
           ../web/scripts/design-gate.test.ts

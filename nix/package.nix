@@ -70,6 +70,7 @@ let
       fileset = lib.fileset.unions [
         sources
         ../contract/web.json
+        ../contract/push.json
         ../web/src/lib/wire/types.ts
         ../src/web/live/test/recorded
       ];
