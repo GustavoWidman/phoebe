@@ -206,7 +206,12 @@ let
             exp_alerts = [ ];
           }
           {
-            eval_time = "3m";
+            eval_time = "4m";
+            alertname = "ServiceUnreachable";
+            exp_alerts = [ ];
+          }
+          {
+            eval_time = "6m";
             alertname = "ServiceUnreachable";
             exp_alerts = [
               {
