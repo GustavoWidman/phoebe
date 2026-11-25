@@ -37,7 +37,10 @@
         ];
 
         flake = {
-          nixosModules.default.imports = [ common ];
+          nixosModules.default.imports = [
+            common
+            ./nix/modules/nixos.nix
+          ];
           darwinModules.default.imports = [ common ];
         };
 
