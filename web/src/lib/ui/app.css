@@ -677,6 +677,15 @@ a.band:active {
 .map .hit {
 	fill: transparent;
 }
+.map g[data-node]:focus {
+	outline: none;
+}
+.map g[data-node]:focus-visible .nd {
+	stroke: var(--acc);
+}
+.search input::-webkit-search-cancel-button {
+	appearance: none;
+}
 .map g[data-node] {
 	cursor: pointer;
 }
