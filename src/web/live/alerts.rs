@@ -268,9 +268,17 @@ fn fallback_summary(labels: &Labels) -> String {
     }
 }
 
-/// one node's pending, firing and resolved for an alert, from its `ALERTS`
-/// of every state over `[from, to]`, sampled every `step` ms
-pub fn timeline(node: &Hostname, history: &[Range], to: i64, step: i64) -> Vec<TimelineEntry> {
+/// one node's pending, firing and resolved for the episode of an alert
+/// that fired at `since`, from its `ALERTS` of every state up to `to`,
+/// sampled every `step` ms. an earlier episode the range reaches back to is
+/// left out: the alert is the one firing since then
+pub fn timeline(
+    node: &Hostname,
+    history: &[Range],
+    since: i64,
+    to: i64,
+    step: i64,
+) -> Vec<TimelineEntry> {
     #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
     enum State {
         Pending,
@@ -328,7 +336,11 @@ pub fn timeline(node: &Hostname, history: &[Range], to: i64, step: i64) -> Vec<T
     {
         close(&mut entries, previous);
     }
-    entries
+    let episode = entries
+        .iter()
+        .rposition(|entry| matches!(entry, TimelineEntry::Resolved { at, .. } if at.0 <= since))
+        .map_or(0, |resolved| resolved + 1);
+    entries.split_off(episode)
 }
 
 /// the line phoebe logs for each alert of every notice the hook gets, which
