@@ -67,10 +67,18 @@ fn build(web_dir: &Path) -> String {
 }
 
 /// the built app; unknown paths get `index.html`, so the app's own routes
-/// deep-link
+/// deep-link. the build writes a `.br` and a `.gz` beside every text file,
+/// which go out as they are to a browser that takes them
 fn web(web_dir: &Path) -> Router {
-    let index = ServeFile::new(web_dir.join("index.html"));
-    Router::new().fallback_service(ServeDir::new(web_dir).fallback(index))
+    let index = ServeFile::new(web_dir.join("index.html"))
+        .precompressed_br()
+        .precompressed_gzip();
+    Router::new().fallback_service(
+        ServeDir::new(web_dir)
+            .precompressed_br()
+            .precompressed_gzip()
+            .fallback(index),
+    )
 }
 
 async fn hello(State(app): State<Shared>) -> Json<Hello> {
