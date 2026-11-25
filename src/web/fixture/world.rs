@@ -397,7 +397,7 @@ fn series(
                 .collect();
             failing = spans(&failed, &times);
             match node {
-                Some(node) => {
+                Some(_) => {
                     let node = probing[0];
                     SeriesData::Lines {
                         lines: vec![Line {
