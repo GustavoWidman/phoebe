@@ -377,6 +377,13 @@ let
       retention_period = cfg.node.retention.logs;
       # a machine's backlog reaches a node that was down, however old it is
       reject_old_samples = false;
+      # every machine pushes as the same tenant, so the limits are the
+      # fleet's: room for six machines draining their buffers at once after
+      # a node comes back
+      ingestion_rate_mb = 16;
+      ingestion_burst_size_mb = 32;
+      per_stream_rate_limit = "8MB";
+      per_stream_rate_limit_burst = "16MB";
     };
     analytics.reporting_enabled = false;
   };
