@@ -42,7 +42,7 @@ type State = {
 	on?: Device[];
 	/** on the fixture that signs its readers in, the page first set up by `before` */
 	signin?: boolean;
-	before?: (page: Page) => Promise<void>;
+	before?: (page: Page) => Promise<unknown>;
 	act?: (page: Page) => Promise<void>;
 };
 

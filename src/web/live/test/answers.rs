@@ -346,7 +346,10 @@ fn a_failing_probe_is_told_apart_from_no_data() {
         [(minute(2), minute(5)), (minute(7), minute(8))],
         "the band: any node"
     );
-    assert_eq!(charts::failing(&failed, Some(&Hostname::from("altar")), &grid), []);
+    assert_eq!(
+        charts::failing(&failed, Some(&Hostname::from("altar")), &grid),
+        []
+    );
     assert_eq!(
         charts::spans(&[true, false, false], &grid[..3]),
         [(minute(1), minute(2))]
