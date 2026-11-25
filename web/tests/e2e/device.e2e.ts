@@ -53,6 +53,24 @@ test('turning notifications on shows the entry to add to the list, and how', asy
 	await expect(push.locator('.entry')).toHaveCount(0);
 });
 
+test('on a phone, the entry and its command scroll into view above the log dock', async ({
+	page,
+	fleet: _
+}, info) => {
+	test.skip(info.project.name !== 'phone', 'the dock is the phone frame');
+	const push = await open(page, {
+		permission: 'default',
+		subscription: null,
+		subscribe: { endpoint: NEW }
+	});
+	await push.getByRole('button', { name: 'Turn on' }).click();
+	const cmd = push.locator('.cmd');
+	await cmd.evaluate((el) => el.scrollIntoView({ block: 'end' }));
+	const bottom = await cmd.evaluate((el) => el.getBoundingClientRect().bottom);
+	const dock = await page.locator('.dock').evaluate((el) => el.getBoundingClientRect().top);
+	expect(bottom).toBeLessThanOrEqual(dock);
+});
+
 test('a device the list already holds is on, and turning it off names the entry to remove', async ({
 	page,
 	fleet: _

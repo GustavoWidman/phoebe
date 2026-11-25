@@ -830,6 +830,8 @@ mark {
 	overscroll-behavior: contain;
 	padding: calc(env(safe-area-inset-top) + 48px) var(--g)
 		calc(env(safe-area-inset-bottom) + 48px + 32px);
+	/* what scrolls into view lands between the nav bar and the dock, not under them */
+	scroll-padding: calc(env(safe-area-inset-top) + 48px) 0 calc(env(safe-area-inset-bottom) + 48px);
 }
 .nav {
 	position: absolute;
