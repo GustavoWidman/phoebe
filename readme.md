@@ -131,7 +131,7 @@ only shows up in the app.
 | `UnitFailed` | info | any other systemd unit, or `org.nixos.*` job, has failed for a minute |
 | `ServiceUnreachable` | page | at least two nodes see the same probe fail for 5 minutes (one, in a fleet of one node) |
 | `CertExpiring` | info | a probed certificate expires within 14 days |
-| `DiskAlmostFull` | page | a writable filesystem is under 10% free for 15 minutes |
+| `DiskAlmostFull` | page | a writable filesystem is under 10% free for 15 minutes. macos's helper volumes (Preboot, Update, VM and the like) share their container's space with the data volume, so only the data volume counts |
 | `DiskFillingFast` | info | a filesystem under 25% free will be full within a day, at the last 6 hours' rate |
 | `NodeUnhealthy` | page | a node's prometheus, loki, alertmanager or blackbox exporter is down for 5 minutes while its machine is up |
 | `LogsBacklog` | info | a machine's buffer for one node is over half full for 15 minutes |

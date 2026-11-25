@@ -202,7 +202,7 @@ let
   alwaysOn = attrNames (filterAttrs (_: machine: machine.alwaysOn) machines);
   agree = min 2 (length nodes);
 
-  filesystems = ''fstype!~"tmpfs|ramfs|devtmpfs|overlay|squashfs|autofs|nullfs|devfs", mountpoint!~"/nix/store|/boot.*"'';
+  filesystems = ''fstype!~"tmpfs|ramfs|devtmpfs|overlay|squashfs|autofs|nullfs|devfs", mountpoint!~"/nix/store|/boot.*|/System/Volumes/(Preboot|Update|VM|xarts|iSCPreboot|Hardware|Recovery)"'';
   writable = "node_filesystem_readonly{${filesystems}} == 0";
   free = "node_filesystem_avail_bytes{${filesystems}} / node_filesystem_size_bytes{${filesystems}}";
 
