@@ -1,6 +1,7 @@
 mod contract;
 mod fixture;
 mod typescript;
+mod web_dir;
 
 use std::time::Duration;
 
