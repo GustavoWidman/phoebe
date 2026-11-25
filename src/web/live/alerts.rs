@@ -349,6 +349,14 @@ impl NoticeLine {
     /// what precedes the line's JSON, for LogQL to find it by
     pub const MARK: &str = "notice ";
 
+    pub fn text(&self) -> String {
+        format!(
+            "{}{}",
+            Self::MARK,
+            serde_json::to_string(self).expect("a notice line always serializes")
+        )
+    }
+
     /// the notice in a log line, wherever the logger put it
     pub fn find(line: &str) -> Option<Self> {
         let start = line.find(concat!("notice ", "{\"alert\":"))?;

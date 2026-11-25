@@ -7,6 +7,7 @@
 pub mod alertmanager;
 pub mod alerts;
 mod charts;
+pub mod hook;
 pub mod logs;
 pub mod loki;
 pub mod prometheus;
