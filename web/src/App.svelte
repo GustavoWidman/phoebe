@@ -18,7 +18,10 @@
 		alert: () => import('#lib/screens/Alert.svelte'),
 		logs: () => import('#lib/screens/Logs.svelte'),
 		device: () => import('#lib/screens/Device.svelte')
-	} satisfies Record<Route['screen'], () => Promise<{ default: Component<never> }>>;
+	} satisfies Record<
+		Exclude<Route['screen'], 'signin'>,
+		() => Promise<{ default: Component<never> }>
+	>;
 	type Screens = {
 		[K in keyof typeof SCREENS]?: Awaited<ReturnType<(typeof SCREENS)[K]>>['default'];
 	};
@@ -28,7 +31,7 @@
 		screens[name] ?? SCREENS[name]().then((m) => (screens = { ...screens, [name]: m.default }));
 
 	const route = $derived(router.route);
-	$effect(() => void load(route.screen));
+	$effect(() => void (route.screen !== 'signin' && load(route.screen)));
 	onMount(() => {
 		const stop = fleet.connect();
 		const idle = setTimeout(
@@ -39,7 +42,9 @@
 	});
 </script>
 
-{#if fleet.snapshot}
+{#if route.screen === 'signin'}
+	{#await import('#lib/auth/SignIn.svelte') then m}<m.default />{/await}
+{:else if fleet.snapshot}
 	{@const snap = fleet.snapshot}
 	<Frame {route} {snap} link={fleet.link}>
 		{#key route}

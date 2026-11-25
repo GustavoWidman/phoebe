@@ -1,13 +1,16 @@
 /**
  * The routes that answer on demand: series, log pages and alert details. Each answer is checked
  * against the contract on arrival, and a screen holds one in a `Load` that asks again whenever
- * what it asks for changes.
+ * what it asks for changes. Every request carries the session; one it no longer opens sends the
+ * app to sign in.
  */
+import { refused, signed } from '#lib/auth/access.ts';
 import { ParseError, type Parser } from '#lib/wire/parse.ts';
 import type { Metric } from '#lib/wire/types.ts';
 
 export async function get<T>(url: string, parse: Parser<T>, signal?: AbortSignal): Promise<T> {
-	const res = await fetch(url, { signal, cache: 'no-store' });
+	const res = await signed(url, { signal });
+	if (res.status === 401) void refused();
 	if (!res.ok) throw new Error(`${url}: ${res.status}`);
 	return parse(await res.json(), url);
 }

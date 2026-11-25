@@ -1,0 +1,12 @@
+{
+  "notification": {
+    "body": "UnitFailed, firing",
+    "dir": "ltr",
+    "lang": "en",
+    "navigate": "https://phoebe.example.com/alerts/5c1d0a5b3e8f2a71",
+    "tag": "5c1d0a5b3e8f2a71",
+    "timestamp": 1795632120000,
+    "title": "lavalink failed on oracle-1"
+  },
+  "web_push": 8030
+}

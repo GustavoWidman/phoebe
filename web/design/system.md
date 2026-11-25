@@ -120,8 +120,9 @@ Each component lists its anatomy, then its states.
 **Nav bar** (phone). 48px plus the safe area, `bg` at 84% with blur, hairline bottom once the
 page scrolls. Left: the wordmark (crescent and "phoebe", 17/600) on the root, else a back or
 close control with the parent's name. Center: the page title, shown once scrolled. Right: the
-clock in mono 13 with a live dot, and on the root the search glyph and the account slot, a
-glyph that opens this device. States: rest, scrolled, on-severity (it takes the severity
+clock in mono 13 with a live dot, and on the root the search glyph and the account slot, which
+opens this device: the first letter of the signed-in login, 11/600 `acc` on an `acc-w` disc
+(radius 999), or the device glyph while the device holds no session. States: rest, scrolled, on-severity (it takes the severity
 wash of the hero under it, so the wash reaches the top of the screen).
 
 **Title block**. Kicker (11 mono label), title (34 sans or 26 mono), sub (15 ink2), meta (13 mono
@@ -198,6 +199,33 @@ severity treatment at item scale.
 **Choice**. The one control for both the time range (1h 6h 24h 7d) and filters (machines,
 units): 13 mono, 32 tall, 12 sides, radius 8, 1px `rule` border. States: rest (ink2), pressed,
 on (`bg2` fill, `rule2` border, ink). A run of choices scrolls sideways on phone.
+
+**Button**. The one action a page asks for: full width, 48 tall, radius 8, 15/600, centered.
+States: primary (`acc` fill, `bg` text), quiet (1px `rule2` border, ink text), pressed (`press`
+over it), disabled (mute text).
+
+**Address field**. Something to copy, a sign-in address: 40 tall, radius 8, 1px `rule2`
+border, the value in 13 mono, `copy` on the right in 13 mono `acc`, which reads `copied` for a
+moment after a tap.
+
+**Probe line**. What the app is waiting on: a dot and 13 mono mute, `asking the tailnet…`,
+`not on the tailnet · checked 3s ago`. Dot states: idle (asking), acc (signing in), bad
+(refused).
+
+**Sign-in screen**. Outside the frame, one column up to 420 wide: the wordmark, a title block
+(34 sans title, 15 ink2 sub), then either three numbered steps (15 ink2, the number 11 mono
+mute), the address field and the probe line, or, once signed in, a key-value list of the
+session and the primary button back to the screen the app left. States: asking, signing in,
+refused (with a quiet Try again), ended (the session ran out), signed in.
+
+**Entry block**. Text to paste into a file: `bg2` panel, radius 8, 12 padding, 13 mono ink2,
+wrapping anywhere, a `copy` control top right as on the address field; under it the command
+that edits the file in 13 mono ink2 and a mute `#` comment saying what to do.
+
+**Notification row**. The device's notifications on the device screen: a row (dot, name 15/600,
+sub 13 ink2) with a choice on the right that turns them on or off, and an entry block under
+it while the list still lacks this device. Dot states: idle (off), acc (asking, or subscribed
+but not in the list), ok (on), warn (off in settings, or the subscription changed).
 
 **Search field**. 40 tall, radius 8, 1px `rule2` border, search glyph, 15 input, live dot and
 label on the right.

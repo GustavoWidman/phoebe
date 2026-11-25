@@ -19,16 +19,19 @@ import type {
 	Node,
 	Probe,
 	ProbeView,
+	PushView,
 	Series,
 	SeriesData,
 	Service,
 	ServiceName,
 	Hostname,
+	SignedIn,
 	Snapshot,
 	StreamEvent,
 	Subject,
 	TimelineEntry,
-	UnitStatus
+	UnitStatus,
+	Viewer
 } from './types.ts';
 
 export class ParseError extends Error {}
@@ -253,3 +256,12 @@ export const parseAlertDetail: Parser<AlertDetail> = obj<AlertDetail>({
 export const parseAlerts: Parser<Alert[]> = list(alert);
 export const parseHello: Parser<Hello> = obj<Hello>({ signin: list(str), build: str, schema: num });
 export const parseSnapshot: Parser<Snapshot> = snapshotShape;
+export const parseSignedIn: Parser<SignedIn> = obj<SignedIn>({
+	token: str,
+	viewer: obj<Viewer>({ login: str, device: str, expires_at: ms })
+});
+export const parsePushView: Parser<PushView> = obj<PushView>({
+	key: str,
+	subscribed: list(str),
+	edit: nullable(str)
+});
