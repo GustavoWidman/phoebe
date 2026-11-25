@@ -7,7 +7,7 @@ use axum::{
 use http_body_util::BodyExt;
 use tower::ServiceExt;
 
-use crate::web::{fixture::Fixture, site, source::Source};
+use crate::web::fixture::Fixture;
 
 /// a build of one page, as the web app's build writes it: the page, and its
 /// brotli copy beside it
@@ -24,7 +24,9 @@ async fn get(
     path: &str,
     encoding: &str,
 ) -> (StatusCode, Option<String>, String) {
-    let router = site::router(Source::Fixture(Fixture::new(0.0)), Some(dir));
+    let router = Fixture::new(0.0)
+        .site(Some(dir.to_owned()), "http://127.0.0.1:7980", false)
+        .unwrap();
     let request = Request::get(path)
         .header(header::ACCEPT_ENCODING, encoding)
         .body(Body::empty())

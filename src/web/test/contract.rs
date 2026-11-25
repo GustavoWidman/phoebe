@@ -192,9 +192,18 @@ fn contract() -> String {
     let mut alert = fixture.alert(&resolved.id).unwrap();
     alert.series = alert.series.map(sample);
 
+    let viewer = Viewer {
+        login: "gustavo@github".into(),
+        device: "iphone".into(),
+        expires_at: Ms(START + 7 * 24 * 3_600_000),
+    };
+
     #[derive(Serialize)]
     struct Contract {
         hello: Hello,
+        signin: SignIn,
+        signed_in: SignedIn,
+        push: PushView,
         stream: Vec<StreamEvent>,
         series: Vec<Series>,
         logs: LogPage,
@@ -213,6 +222,21 @@ fn contract() -> String {
             build: "4f2a9c1e07b3".into(),
             schema: SCHEMA,
         },
+        signin: SignIn {
+            key: Jwk {
+                kty: "EC".into(),
+                crv: "P-256".into(),
+                x: "f83OJ3D2xF1Bg8vub9tLe1gHMzV76e8Tus9uPHvRVEU".into(),
+                y: "x_FEzRu9m36HLN_tue659LNpXW6pCyStikYjKIWI5a0".into(),
+            },
+            ts: Ms(START),
+            sig: "kTnLdVa0YyBGrdyKrq0W2RQSgwPRkpbOg9eW0bJ0rPQhoNTGDe2BMLjZz8x7FzWHZ2h8n2ShyeSQnBuqFPsKVw".into(),
+        },
+        signed_in: SignedIn {
+            token: "v1.eyJ2IjoxfQ.c2lnbmVk".into(),
+            viewer,
+        },
+        push: Fixture::push(),
         stream: vec![StreamEvent::Snapshot(snapshot), StreamEvent::Expired],
         series,
         logs,

@@ -1,0 +1,98 @@
+//! `tailscale whois --json` answers in the shape tailscale 1.104 writes,
+//! trimmed to what is read and with made-up names
+
+use std::collections::BTreeSet;
+
+use crate::web::whois::{CAPABILITY, Peer};
+
+/// a phone its user signed in, granted nothing
+const PHONE: &str = r#"{
+  "Node": {
+    "ID": 4943427598918140,
+    "StableID": "nq9kwhTtbf11CNTRL",
+    "Name": "phone.tail0000.ts.net.",
+    "User": 5537918502932556,
+    "Addresses": ["100.73.0.1/32", "fd7a:115c:a1e0::1/128"],
+    "Hostinfo": { "OS": "iOS", "Hostname": "localhost" },
+    "Online": true,
+    "ComputedName": "phone",
+    "ComputedNameWithHost": "phone (localhost)"
+  },
+  "UserProfile": {
+    "ID": 5537918502932556,
+    "LoginName": "someone@example.com",
+    "DisplayName": "Someone"
+  },
+  "CapMap": null
+}"#;
+
+/// a server owned by a tag
+const SERVER: &str = r#"{
+  "Node": {
+    "ID": 1,
+    "Name": "lab.tail0000.ts.net.",
+    "User": 6541316759026549,
+    "Tags": ["tag:fleet"],
+    "ComputedName": "lab"
+  },
+  "UserProfile": {
+    "ID": 6541316759026549,
+    "LoginName": "tagged-devices",
+    "DisplayName": "Tagged Devices"
+  },
+  "CapMap": null
+}"#;
+
+/// `answer` with an app grant: each capability maps to the values every
+/// matching grant gave it
+fn granted(answer: &str, capability: &str) -> String {
+    answer.replace(
+        r#""CapMap": null"#,
+        &format!(
+            r#""CapMap": {{ "{capability}": [{{}}], "example.com/cap/other": [{{ "x": 1 }}] }}"#
+        ),
+    )
+}
+
+#[test]
+fn whois_names_the_login_and_device() {
+    let phone = Peer::parse(PHONE.as_bytes()).unwrap();
+    assert_eq!(
+        phone,
+        Peer {
+            login: "someone@example.com".into(),
+            device: "phone".into(),
+            capabilities: BTreeSet::new(),
+        }
+    );
+
+    let server = Peer::parse(SERVER.as_bytes()).unwrap();
+    assert_eq!(server.login, "tagged-devices");
+    assert_eq!(server.device, "lab");
+
+    let granted = Peer::parse(granted(PHONE, CAPABILITY).as_bytes()).unwrap();
+    assert_eq!(
+        granted.capabilities,
+        BTreeSet::from([CAPABILITY.to_owned(), "example.com/cap/other".to_owned()])
+    );
+
+    assert!(Peer::parse(b"peer not found").is_err());
+    assert!(Peer::parse(PHONE.replace("phone.tail0000", "").as_bytes()).is_err());
+}
+
+#[test]
+fn a_node_signs_in_only_when_the_policy_grants_it_the_capability() {
+    for answer in [PHONE, SERVER] {
+        let plain = Peer::parse(answer.as_bytes()).unwrap();
+        let elsewhere = Peer::parse(granted(answer, "example.com/cap/another").as_bytes()).unwrap();
+        let granted = Peer::parse(granted(answer, CAPABILITY).as_bytes()).unwrap();
+
+        assert!(granted.granted(CAPABILITY));
+        assert!(!plain.granted(CAPABILITY));
+        assert!(!elsewhere.granted(CAPABILITY));
+        assert!(
+            granted.granted("example.com/cap/other"),
+            "the capability is an option"
+        );
+    }
+}

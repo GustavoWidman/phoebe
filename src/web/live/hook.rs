@@ -62,30 +62,38 @@ impl PushSettings {
 
     /// the key and the subscriptions, as the files hold them now
     fn load(&self) -> Result<(Client, Vec<Device>)> {
+        let push = WebPush::new(self.key()?, &self.origin)?;
+        Ok((
+            Client::new(push).timeout(TIMEOUT).deadline(DEADLINE),
+            self.devices()?,
+        ))
+    }
+
+    /// the VAPID key, as its file holds it now
+    pub fn key(&self) -> Result<VapidKey> {
         let key = std::fs::read_to_string(&self.key_file)
             .wrap_err_with(|| format!("failed to read {}", self.key_file.display()))?;
-        let key = VapidKey::from_base64url(key.trim()).map_err(|_| {
+        VapidKey::from_base64url(key.trim()).map_err(|_| {
             eyre!(
                 "{} does not hold a VAPID private key (the base64url of a P-256 scalar)",
                 self.key_file.display()
             )
-        })?;
-        let devices = std::fs::read(&self.subscriptions_file)
+        })
+    }
+
+    /// the devices to notify, as their file lists them now
+    pub fn devices(&self) -> Result<Vec<Device>> {
+        std::fs::read(&self.subscriptions_file)
             .wrap_err_with(|| format!("failed to read {}", self.subscriptions_file.display()))
             .and_then(|json| devices(&json))
-            .wrap_err_with(|| format!("in {}", self.subscriptions_file.display()))?;
-        let push = WebPush::new(key, &self.origin)?;
-        Ok((
-            Client::new(push).timeout(TIMEOUT).deadline(DEADLINE),
-            devices,
-        ))
+            .wrap_err_with(|| format!("in {}", self.subscriptions_file.display()))
     }
 }
 
 /// a subscription, named so a log line can say which device it is
-struct Device {
-    name: String,
-    subscription: Subscription,
+pub struct Device {
+    pub name: String,
+    pub subscription: Subscription,
 }
 
 fn devices(json: &[u8]) -> Result<Vec<Device>> {
