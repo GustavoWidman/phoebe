@@ -499,7 +499,7 @@ pub const INCIDENTS: [Incident; 4] = [
         cleared: Some(LAVALINK_RESTARTED),
         notified_by: Some("oracle-2"),
         chart: Some(Metric::Mem),
-        summary: |_| "lavalink.service of lavalink failed on oracle-1".into(),
+        summary: |_| "lavalink failed on oracle-1".into(),
     },
 ];
 

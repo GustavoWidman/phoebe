@@ -970,7 +970,7 @@
           "starts_at": 1795629570000,
           "machine": "oracle-1",
           "service": "lavalink",
-          "summary": "lavalink.service of lavalink failed on oracle-1",
+          "summary": "lavalink failed on oracle-1",
           "seen_by": [
             "altar",
             "lab",
@@ -1360,7 +1360,7 @@
       "starts_at": 1795629570000,
       "machine": "oracle-1",
       "service": "lavalink",
-      "summary": "lavalink.service of lavalink failed on oracle-1",
+      "summary": "lavalink failed on oracle-1",
       "seen_by": [
         "altar",
         "lab",
