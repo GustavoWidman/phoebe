@@ -1,6 +1,6 @@
 [package]
 name = "phoebe"
-version = "0.6.1"
+version = "0.6.2"
 edition = "2024"
 description = "Observability for a Nix fleet: every machine and service, their metrics, logs and alerts"
 license = "MIT"
