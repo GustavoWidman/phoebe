@@ -1,6 +1,6 @@
 {
 	"default": {
-		"js": 36,
+		"js": 37,
 		"css": 5
 	},
 	"routes": {
@@ -12,18 +12,18 @@
 		},
 		"/services/:name": {
 			"module": "src/lib/screens/Service.svelte",
-			"js": 38
+			"js": 39
 		},
 		"/alerts/:id": {
 			"module": "src/lib/screens/Alert.svelte"
 		},
 		"/logs": {
 			"module": "src/lib/screens/Logs.svelte",
-			"js": 31
+			"js": 32
 		},
 		"/device": {
 			"module": "src/lib/screens/Device.svelte",
-			"js": 30
+			"js": 32
 		}
 	}
 }

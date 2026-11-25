@@ -147,7 +147,20 @@ async fn a_page_goes_out_firing_then_resolved_under_one_tag() {
         resolved["notification"]["body"],
         "Resolved after 12 minutes"
     );
+
+    // the service worker shows this very payload (web/src/lib/push/notice.test.ts)
+    let sent = serde_json::to_string_pretty(fired).unwrap() + "\n";
+    if std::env::var_os("PHOEBE_BLESS").is_some() {
+        std::fs::write(PUSH, &sent).unwrap();
+    }
+    assert!(
+        std::fs::read_to_string(PUSH).unwrap_or_default() == sent,
+        "{PUSH} is not what the hook sends; rewrite it with `PHOEBE_BLESS=1 cargo test web::`"
+    );
 }
+
+/// a page alert's push as the hook sends it, for the service worker's tests
+const PUSH: &str = "contract/push.json";
 
 #[tokio::test]
 async fn an_info_alert_is_logged_and_never_pushed() {

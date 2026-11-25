@@ -57,5 +57,7 @@ export function context(route: Route, snap: Snapshot | null): Context {
 			return { title: 'Logs', logs: null, sev: null, leave: 'back' };
 		case 'device':
 			return { title: 'This device', logs: ALL, sev: null, leave: 'back' };
+		case 'signin':
+			return { title: 'Sign in', logs: null, sev: null, leave: 'none' };
 	}
 }

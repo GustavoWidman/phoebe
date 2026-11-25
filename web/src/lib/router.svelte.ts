@@ -8,8 +8,10 @@ export type Route =
 	| { screen: 'service'; name: string }
 	| { screen: 'alert'; id: string }
 	| { screen: 'logs' }
-	/** this device: its theme now, and its session and notifications once the app signs in */
-	| { screen: 'device' };
+	/** this device: its theme, its session and its notifications */
+	| { screen: 'device' }
+	/** signing in on the tailnet, outside every other screen */
+	| { screen: 'signin' };
 
 const routes: [RegExp, (...params: string[]) => Route][] = [
 	[/^\/$/, () => ({ screen: 'fleet' })],
@@ -17,7 +19,8 @@ const routes: [RegExp, (...params: string[]) => Route][] = [
 	[/^\/services\/([^/]+)$/, (name) => ({ screen: 'service', name })],
 	[/^\/alerts\/([^/]+)$/, (id) => ({ screen: 'alert', id })],
 	[/^\/logs$/, () => ({ screen: 'logs' })],
-	[/^\/device$/, () => ({ screen: 'device' })]
+	[/^\/device$/, () => ({ screen: 'device' })],
+	[/^\/signin$/, () => ({ screen: 'signin' })]
 ];
 
 export function parse(path: string): Route | null {
@@ -49,6 +52,8 @@ export function href(route: Route): string {
 			return '/logs';
 		case 'device':
 			return '/device';
+		case 'signin':
+			return '/signin';
 	}
 }
 

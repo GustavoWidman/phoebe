@@ -1207,3 +1207,147 @@ mark {
 .side .side-h .wm {
 	padding: 0 16px;
 }
+
+/* ---------- signing in, the session and notifications ---------- */
+.auth {
+	max-width: 420px;
+	margin: 0 auto;
+	padding-top: 32px;
+}
+.auth > .wm {
+	padding: 0;
+}
+.auth .tb {
+	padding-top: 32px;
+}
+.auth .kv {
+	margin-top: 24px;
+}
+.steps {
+	display: grid;
+	gap: 8px;
+	margin-top: 24px;
+	font-size: 15px;
+	color: var(--ink2);
+}
+.steps li {
+	display: flex;
+	align-items: baseline;
+	gap: 12px;
+}
+.steps .m {
+	font-size: 11px;
+	color: var(--mute);
+}
+.addr {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 12px;
+	height: 40px;
+	margin-top: 24px;
+	padding: 0 12px;
+	border-radius: 8px;
+	border: 1px solid var(--rule2);
+	font-size: 13px;
+}
+.cp {
+	flex: none;
+	font-size: 13px;
+	color: var(--acc);
+}
+.probe {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	margin-top: 12px;
+	font-size: 13px;
+	color: var(--mute);
+}
+.btn {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	width: 100%;
+	height: 48px;
+	margin-top: 24px;
+	padding: 0 16px;
+	border-radius: 8px;
+	background: var(--acc);
+	color: var(--bg);
+	font-size: 15px;
+	font-weight: 600;
+	text-align: center;
+}
+.btn.q {
+	margin-top: 12px;
+	border: 1px solid var(--rule2);
+	background: transparent;
+	color: var(--ink);
+}
+.btn:active {
+	box-shadow: inset 0 0 0 999px var(--press);
+}
+.btn:disabled,
+.opt:disabled {
+	color: var(--mute);
+	cursor: default;
+}
+.me {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 17px;
+	height: 17px;
+	border-radius: 999px;
+	background: var(--acc-w);
+	color: var(--acc);
+	font: 600 11px/1 var(--f);
+}
+.pr {
+	display: grid;
+	grid-template-columns: 7px minmax(0, 1fr) auto;
+	column-gap: 12px;
+	align-items: center;
+	padding: 12px 0;
+	border-bottom: 1px solid var(--rule);
+}
+.pr > .d,
+.pr > .dot {
+	align-self: start;
+	margin-top: 8px;
+}
+.pr b {
+	font-size: 15px;
+	font-weight: 600;
+}
+.pr p {
+	margin-top: 2px;
+	font-size: 13px;
+	color: var(--ink2);
+}
+.entry {
+	position: relative;
+	margin-top: 12px;
+	padding: 12px 48px 12px 12px;
+	border-radius: 8px;
+	background: var(--bg2);
+}
+.entry pre {
+	font-size: 13px;
+	color: var(--ink2);
+	white-space: pre-wrap;
+	word-break: break-all;
+}
+.entry .cp {
+	position: absolute;
+	top: 12px;
+	right: 12px;
+}
+.cmd,
+.note {
+	margin-top: 8px;
+	font-size: 13px;
+	color: var(--ink2);
+	word-break: break-word;
+}
