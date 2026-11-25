@@ -1,0 +1,29 @@
+{
+	"default": {
+		"js": 36,
+		"css": 5
+	},
+	"routes": {
+		"/": {
+			"module": "src/lib/screens/Fleet.svelte"
+		},
+		"/machines/:name": {
+			"module": "src/lib/screens/Machine.svelte"
+		},
+		"/services/:name": {
+			"module": "src/lib/screens/Service.svelte",
+			"js": 38
+		},
+		"/alerts/:id": {
+			"module": "src/lib/screens/Alert.svelte"
+		},
+		"/logs": {
+			"module": "src/lib/screens/Logs.svelte",
+			"js": 31
+		},
+		"/device": {
+			"module": "src/lib/screens/Device.svelte",
+			"js": 30
+		}
+	}
+}
