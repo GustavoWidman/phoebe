@@ -242,7 +242,10 @@ let
           ) "1m" "{{ $labels.name }} failed on {{ $labels.machine }}")
           (rule "ServiceUnreachable" "page"
             "count by (service, machine, kind, target) (probe_success == 0) >= ${toString agree}"
-            "2m"
+            # as long as MachineDown, whose scrapes fail sooner than probes do,
+            # so a machine going down fires MachineDown first and the
+            # alertmanager holds back the unreachable services behind it
+            "5m"
             "{{ $labels.service }} is unreachable at {{ $labels.target }} from {{ $value }} nodes"
           )
           (rule "CertExpiring" "info"
@@ -310,6 +313,15 @@ let
       group_interval = "5m";
       repeat_interval = "4h";
     };
+    # a machine that is down says so once, instead of once for each of its
+    # services and stores
+    inhibit_rules = [
+      {
+        source_matchers = [ ''alertname="MachineDown"'' ];
+        target_matchers = [ ''alertname=~"ServiceUnreachable|UnitFailed|NodeUnhealthy|CertExpiring"'' ];
+        equal = [ "machine" ];
+      }
+    ];
     receivers = [
       {
         name = "phoebe";

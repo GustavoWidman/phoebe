@@ -125,7 +125,7 @@ only shows up in the app.
 | `MachineDown` | page | an `alwaysOn` machine's node exporter is unreachable for 5 minutes |
 | `UnitFailed` | page | a registry service's unit or launchd job has failed for a minute |
 | `UnitFailed` | info | any other systemd unit, or `org.nixos.*` job, has failed for a minute |
-| `ServiceUnreachable` | page | at least two nodes see the same probe fail for 2 minutes (one, in a fleet of one node) |
+| `ServiceUnreachable` | page | at least two nodes see the same probe fail for 5 minutes (one, in a fleet of one node) |
 | `CertExpiring` | info | a probed certificate expires within 14 days |
 | `DiskAlmostFull` | page | a writable filesystem is under 10% free for 15 minutes |
 | `DiskFillingFast` | info | a filesystem under 25% free will be full within a day, at the last 6 hours' rate |
@@ -133,7 +133,12 @@ only shows up in the app.
 | `LogsBacklog` | info | a machine's buffer for one node is over half full for 15 minutes |
 
 alertmanager groups notifications by alert, machine and service, and posts
-them to `alerting.webhook` in its webhook format.
+them to `alerting.webhook` in its webhook format. while `MachineDown` fires
+for a machine, it holds back that machine's `ServiceUnreachable`, `UnitFailed`,
+`NodeUnhealthy` and `CertExpiring`, so a machine going down is one
+notification. that only works because `MachineDown` fires first: its scrapes
+fail within 15 seconds and probes within a minute, and both rules wait 5
+minutes.
 
 ## sharp edges
 
