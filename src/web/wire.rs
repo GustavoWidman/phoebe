@@ -16,6 +16,12 @@ pub const SCHEMA: u16 = 1;
 #[serde(transparent)]
 pub struct Ms(pub i64);
 
+impl Ms {
+    pub fn now() -> Self {
+        Self(super::live::now())
+    }
+}
+
 macro_rules! name {
     ($(#[$doc:meta])* $name:ident) => {
         $(#[$doc])*
@@ -62,6 +68,60 @@ pub struct Hello {
     pub schema: u16,
 }
 
+/// what a browser sends to `POST /auth/session` to sign in: its public
+/// key, and its signature over `phoebe-signin-v1\n<public origin>\n<ts>` by
+/// the matching private key
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(test, derive(ts_rs::TS))]
+pub struct SignIn {
+    pub key: Jwk,
+    pub ts: Ms,
+    /// `r || s`, base64url, as WebCrypto signs
+    pub sig: String,
+}
+
+/// a P-256 public key as a JSON Web Key, as WebCrypto exports it
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(test, derive(ts_rs::TS))]
+pub struct Jwk {
+    pub kty: String,
+    pub crv: String,
+    pub x: String,
+    pub y: String,
+}
+
+/// what signing in on the tailnet answers: the session to send as
+/// `Authorization: Phoebe <token>`, and who it is for
+#[derive(Clone, Debug, PartialEq, Eq, Serialize)]
+#[cfg_attr(test, derive(ts_rs::TS))]
+pub struct SignedIn {
+    pub token: String,
+    pub viewer: Viewer,
+}
+
+/// who is signed in, on which device, until when
+#[derive(Clone, Debug, PartialEq, Eq, Serialize)]
+#[cfg_attr(test, derive(ts_rs::TS))]
+pub struct Viewer {
+    /// the tailnet login
+    pub login: String,
+    /// the tailnet node, by its MagicDNS name
+    pub device: String,
+    pub expires_at: Ms,
+}
+
+/// `GET /api/push`: the key a browser subscribes with, and the devices
+/// pushes go to, each the first 16 hex digits of its endpoint's SHA-256
+#[derive(Clone, Debug, PartialEq, Eq, Serialize)]
+#[cfg_attr(test, derive(ts_rs::TS))]
+pub struct PushView {
+    /// the VAPID public key, base64url, the browser's `applicationServerKey`
+    pub key: String,
+    pub subscribed: Vec<String>,
+    /// the command that edits the subscription list
+    pub edit: Option<String>,
+}
+
 /// one message of `GET /api/stream`. a snapshot is the whole fleet, sent on
 /// connect and again whenever it changes
 #[derive(Clone, Debug, PartialEq, Serialize)]
@@ -70,13 +130,6 @@ pub struct Hello {
 pub enum StreamEvent {
     Snapshot(Snapshot),
     /// the session ended; the stream closes after this
-    #[cfg_attr(
-        not(test),
-        expect(
-            dead_code,
-            reason = "the simulated fleet signs no one in, so no session ends"
-        )
-    )]
     Expired,
 }
 
@@ -435,13 +488,6 @@ pub enum LogEvent {
     /// lines that arrived since the last, oldest first
     Lines { lines: Vec<LogLine> },
     /// the session ended; the stream closes after this
-    #[cfg_attr(
-        not(test),
-        expect(
-            dead_code,
-            reason = "the simulated fleet signs no one in, so no session ends"
-        )
-    )]
     Expired,
 }
 

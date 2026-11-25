@@ -37,6 +37,11 @@ pub fn typescript() -> String {
     let config = Config::new().with_large_int("number");
     let declarations = [
         (Hello::docs(), Hello::decl(&config)),
+        (SignIn::docs(), SignIn::decl(&config)),
+        (Jwk::docs(), Jwk::decl(&config)),
+        (SignedIn::docs(), SignedIn::decl(&config)),
+        (Viewer::docs(), Viewer::decl(&config)),
+        (PushView::docs(), PushView::decl(&config)),
         (StreamEvent::docs(), StreamEvent::decl(&config)),
         (Snapshot::docs(), Snapshot::decl(&config)),
         (Node::docs(), Node::decl(&config)),

@@ -18,6 +18,46 @@ export type Hello = {
   schema: number;
 };
 
+/** what a browser sends to `POST /auth/session` to sign in: its public key, and its signature over `phoebe-signin-v1\n<public origin>\n<ts>` by the matching private key */
+export type SignIn = {
+  key: Jwk;
+  ts: Ms;
+  /** `r || s`, base64url, as WebCrypto signs */
+  sig: string;
+};
+
+/** a P-256 public key as a JSON Web Key, as WebCrypto exports it */
+export type Jwk = {
+  kty: string;
+  crv: string;
+  x: string;
+  y: string;
+};
+
+/** what signing in on the tailnet answers: the session to send as `Authorization: Phoebe <token>`, and who it is for */
+export type SignedIn = {
+  token: string;
+  viewer: Viewer;
+};
+
+/** who is signed in, on which device, until when */
+export type Viewer = {
+  /** the tailnet login */
+  login: string;
+  /** the tailnet node, by its MagicDNS name */
+  device: string;
+  expires_at: Ms;
+};
+
+/** `GET /api/push`: the key a browser subscribes with, and the devices pushes go to, each the first 16 hex digits of its endpoint's SHA-256 */
+export type PushView = {
+  /** the VAPID public key, base64url, the browser's `applicationServerKey` */
+  key: string;
+  subscribed: Array<string>;
+  /** the command that edits the subscription list */
+  edit: string | null;
+};
+
 /** one message of `GET /api/stream`. a snapshot is the whole fleet, sent on connect and again whenever it changes */
 export type StreamEvent = { kind: "snapshot" } & Snapshot | { kind: "expired" };
 

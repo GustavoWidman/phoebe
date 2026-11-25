@@ -10,6 +10,8 @@ mod story;
 mod world;
 
 use std::{
+    collections::BTreeSet,
+    path::PathBuf,
     sync::{Arc, Mutex},
     time::Duration,
 };
@@ -19,6 +21,7 @@ use axum::{
     extract::{Query, State},
     routing::post,
 };
+use eyre::Result;
 use futures_util::Stream;
 use serde::Deserialize;
 use tokio::{sync::watch, time::Instant};
@@ -31,9 +34,23 @@ use self::{
     story::{HISTORY, HOUR, STEP},
 };
 use super::{
+    push::{Push, endpoint_hash},
     query::{LogPageQuery, LogQuery, Refusal, SeriesQuery},
-    wire::{Alert, AlertDetail, AlertId, FixtureClock, LogEvent, LogPage, Series, Snapshot},
+    session::{Key, Sessions},
+    signin::Signin,
+    site::{self, Access, Settings},
+    source::Source,
+    whois::{CAPABILITY, Peer, Whois},
+    wire::{
+        Alert, AlertDetail, AlertId, FixtureClock, LogEvent, LogPage, PushView, Series, Snapshot,
+    },
 };
+
+/// the key the simulated fleet's devices subscribe with
+pub const PUSH_KEY: &str =
+    "BBgqG0VbQAPnBlmSzWD_uRkfTJJ7rNkfZc3HbxlUfhd8DBhqYt_DqIxDFK71gxU01Umj-1CqpRCOP0NQP_4183g";
+/// the one subscription in the simulated fleet's list
+pub const PUSH_SUBSCRIBED: &str = "https://web.push.apple.com/QGxfixture-iphone";
 
 pub struct Fixture {
     clock: Mutex<Clock>,
@@ -72,6 +89,62 @@ impl Fixture {
             fleet: watch::Sender::new(Arc::new(world::snapshot(START))),
             moved: watch::Sender::new(()),
         })
+    }
+
+    /// what `/api/push` answers for the simulated fleet
+    pub fn push() -> PushView {
+        PushView {
+            key: PUSH_KEY.into(),
+            subscribed: vec![endpoint_hash(PUSH_SUBSCRIBED)],
+            edit: Some("agenix -e secrets/phoebe-push-subscriptions.age".into()),
+        }
+    }
+
+    /// who signs in to the simulated fleet
+    pub fn peer() -> Peer {
+        Peer {
+            login: "gustavo@github".into(),
+            device: "iphone".into(),
+            capabilities: BTreeSet::from([CAPABILITY.to_owned()]),
+        }
+    }
+
+    /// the whole simulated site, served at `origin`: the fleet, its clock,
+    /// and, with `signin`, signing in on the same address anyone who asks
+    /// as [Fixture::peer], under a session key made up for this run
+    pub fn site(
+        self: &Arc<Self>,
+        web_dir: Option<PathBuf>,
+        origin: &str,
+        signin: bool,
+    ) -> Result<Router> {
+        let sessions = Arc::new(Sessions::new(vec![Key::generate()])?);
+        let access = match signin {
+            true => Access::Sessions {
+                sessions: sessions.clone(),
+                signin: vec![origin.to_owned()],
+            },
+            false => Access::Open,
+        };
+        let router = site::router(
+            Source::Fixture(self.clone()),
+            Settings {
+                web_dir,
+                access,
+                push: Some(Push::Fixed(Self::push())),
+            },
+        )
+        .merge(self.routes());
+        if !signin {
+            return Ok(router);
+        }
+        let signin = Signin {
+            sessions,
+            whois: Whois::Fixed(Self::peer()),
+            capability: CAPABILITY.into(),
+            origin: origin.to_owned(),
+        };
+        Ok(router.merge(signin.router()?))
     }
 
     /// publishes a snapshot at every scrape the running clock reaches

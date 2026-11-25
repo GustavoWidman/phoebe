@@ -7,6 +7,31 @@
     "build": "4f2a9c1e07b3",
     "schema": 1
   },
+  "signin": {
+    "key": {
+      "kty": "EC",
+      "crv": "P-256",
+      "x": "f83OJ3D2xF1Bg8vub9tLe1gHMzV76e8Tus9uPHvRVEU",
+      "y": "x_FEzRu9m36HLN_tue659LNpXW6pCyStikYjKIWI5a0"
+    },
+    "ts": 1795632120000,
+    "sig": "kTnLdVa0YyBGrdyKrq0W2RQSgwPRkpbOg9eW0bJ0rPQhoNTGDe2BMLjZz8x7FzWHZ2h8n2ShyeSQnBuqFPsKVw"
+  },
+  "signed_in": {
+    "token": "v1.eyJ2IjoxfQ.c2lnbmVk",
+    "viewer": {
+      "login": "gustavo@github",
+      "device": "iphone",
+      "expires_at": 1796236920000
+    }
+  },
+  "push": {
+    "key": "BBgqG0VbQAPnBlmSzWD_uRkfTJJ7rNkfZc3HbxlUfhd8DBhqYt_DqIxDFK71gxU01Umj-1CqpRCOP0NQP_4183g",
+    "subscribed": [
+      "4029f3734d796cf1"
+    ],
+    "edit": "agenix -e secrets/phoebe-push-subscriptions.age"
+  },
   "stream": [
     {
       "kind": "snapshot",

@@ -1,7 +1,15 @@
+mod access;
+mod connector;
 mod contract;
 mod fixture;
+mod push;
+mod ready;
+mod session;
+mod signin;
+mod tls;
 mod typescript;
 mod web_dir;
+mod whois;
 
 use std::time::Duration;
 
@@ -14,12 +22,13 @@ use http_body_util::BodyExt;
 use serde_json::Value;
 use tower::ServiceExt;
 
-use super::{fixture::Fixture, site, source::Source};
+use super::fixture::Fixture;
 
 /// the simulated fleet's site, its clock held at the start
 pub fn simulated() -> Router {
-    let fixture = Fixture::new(0.0);
-    site::router(Source::Fixture(fixture.clone()), None).merge(fixture.routes())
+    Fixture::new(0.0)
+        .site(None, "http://127.0.0.1:7980", false)
+        .unwrap()
 }
 
 pub async fn get(router: &Router, path: &str) -> (StatusCode, Value) {
@@ -64,10 +73,25 @@ impl Events {
         let request = Request::get(path).body(Body::empty()).unwrap();
         let response = router.clone().oneshot(request).await.unwrap();
         assert_eq!(response.status(), StatusCode::OK, "{path}");
+        Self::from(response)
+    }
+
+    pub fn from(response: axum::response::Response) -> Self {
         assert_eq!(response.headers()["content-type"], "text/event-stream");
         Self {
             body: response.into_body(),
             buffer: String::new(),
+        }
+    }
+
+    /// whether the stream closes, with nothing but keep-alives before
+    pub async fn ended(&mut self) -> bool {
+        loop {
+            match tokio::time::timeout(Duration::from_secs(10), self.body.frame()).await {
+                Ok(None) => return self.buffer.trim().is_empty(),
+                Ok(Some(_)) => continue,
+                Err(_) => return false,
+            }
         }
     }
 
