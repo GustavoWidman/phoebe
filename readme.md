@@ -75,7 +75,9 @@ every machine runs the agent:
   the registry names, into its textfile directory every 30 seconds, so a
   launchd daemon that dies alerts just like a failed unit.
 - **vector**, reading the journal on nixos and `services.phoebe.logs.files`
-  (`/var/log/*.log`) on darwin. it sends every line to every node's loki, one
+  (`/var/log/*.log`) on darwin, where a file it hasn't seen before is read
+  from its end and a file untouched for a day is skipped, so a mac sends what
+  its daemons write from the day it joins. it sends every line to every node's loki, one
   sink per node, and each sink has a disk buffer of its own
   (`logs.bufferSize`, 512 MiB). a node that's down holds up nothing but its
   own backlog, and gets all of it once it's back. a buffer that fills drops

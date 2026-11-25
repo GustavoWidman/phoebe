@@ -394,6 +394,11 @@ let
             type = "file";
             include = logFiles;
             exclude = logExclude;
+            # a file vector has no checkpoint for is read from its end, and a
+            # file untouched for a day is left alone, so a mac joining the fleet
+            # sends what its daemons write from then on, not years of history
+            read_from = "end";
+            ignore_older_secs = 86400;
           };
       vector_metrics.type = "internal_metrics";
     };
