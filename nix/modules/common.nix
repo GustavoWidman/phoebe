@@ -123,6 +123,33 @@ let
         default = null;
         description = "Where every node scrapes the service's own metrics, or `null` when it has none.";
       };
+      heartbeat = mkOption {
+        type = types.nullOr (
+          types.submodule {
+            options = {
+              metric = mkOption {
+                type = types.strMatching "[a-zA-Z_:][a-zA-Z0-9_:]*";
+                example = "backup_healthy_timestamp_seconds";
+                description = ''
+                  A gauge on the service's machine, holding the unix time the
+                  service last knew itself healthy, in seconds.
+                '';
+              };
+              within = mkOption {
+                type = types.ints.positive;
+                example = 3600;
+                description = "How many seconds the gauge may fall behind before ServiceStale pages.";
+              };
+            };
+          }
+        );
+        default = null;
+        description = ''
+          How a service that serves nothing, a batch job say, reports that it
+          is healthy. ServiceStale pages when the gauge falls behind or goes
+          missing. `null` for a service with no heartbeat.
+        '';
+      };
     };
   };
 

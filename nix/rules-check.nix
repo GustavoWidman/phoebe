@@ -85,6 +85,28 @@ let
         machine = "n3";
         unit = "org.nixos.coeusd";
       };
+      backup = {
+        machine = "n1";
+        heartbeat = {
+          metric = "backup_healthy_timestamp_seconds";
+          within = 3600;
+        };
+      };
+      sync = {
+        machine = "n2";
+        unit = "sync.service";
+        heartbeat = {
+          metric = "sync_healthy_timestamp_seconds";
+          within = 600;
+        };
+      };
+      report = {
+        machine = "n3";
+        heartbeat = {
+          metric = "report_healthy_timestamp_seconds";
+          within = 86400;
+        };
+      };
     };
   };
 
@@ -289,6 +311,62 @@ let
             ];
           }
         ];
+      }
+      {
+        # ServiceStale pages for a heartbeat that falls behind for 5 minutes,
+        # or one that is missing as long; a fresh one stays quiet
+        interval = "1m";
+        input_series = [
+          # last healthy at 0, an hour behind from 60m on
+          (series "backup_healthy_timestamp_seconds" (node "n1") "0x70")
+          # healthy every minute
+          (series "sync_healthy_timestamp_seconds" (node "n2") "0+60x70")
+          # and report_healthy_timestamp_seconds, never written
+        ];
+        alert_rule_test =
+          let
+            late = {
+              exp_labels = {
+                service = "backup";
+                machine = "n1";
+                severity = "page";
+              };
+              exp_annotations.summary = "backup last reported healthy 1h 6m 0s ago on n1";
+            };
+            missing = {
+              exp_labels = {
+                service = "report";
+                machine = "n3";
+                severity = "page";
+              };
+              exp_annotations.summary = "report_healthy_timestamp_seconds of report is missing on n3";
+            };
+          in
+          [
+            {
+              eval_time = "4m";
+              alertname = "ServiceStale";
+              exp_alerts = [ ];
+            }
+            {
+              eval_time = "6m";
+              alertname = "ServiceStale";
+              exp_alerts = [ missing ];
+            }
+            {
+              eval_time = "65m";
+              alertname = "ServiceStale";
+              exp_alerts = [ missing ];
+            }
+            {
+              eval_time = "66m";
+              alertname = "ServiceStale";
+              exp_alerts = [
+                late
+                missing
+              ];
+            }
+          ];
       }
       {
         # LogsBacklog tells once a buffer for a node is more than half full
