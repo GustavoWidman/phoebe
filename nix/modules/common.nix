@@ -197,6 +197,18 @@ in
       };
     };
 
+    textfileDirectories = mkOption {
+      type = types.listOf types.str;
+      default = [ ];
+      example = [ "/var/lib/backup/metrics" ];
+      description = ''
+        Directories, globs allowed, of `*.prom` files this machine's node
+        exporter serves besides its own, where a job on the machine writes the
+        gauges of its heartbeat. The node exporter's user must be able to read
+        them.
+      '';
+    };
+
     logs.bufferSize = mkOption {
       type = types.ints.positive;
       default = 512 * 1024 * 1024;

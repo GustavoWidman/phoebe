@@ -121,7 +121,9 @@ in
           enable = true;
           listenAddress = address;
           port = ports.node;
-          extraFlags = [ "--collector.textfile.directory=${textfiles}" ];
+          extraFlags = map (dir: "--collector.textfile.directory=${dir}") (
+            [ textfiles ] ++ cfg.textfileDirectories
+          );
         };
 
         system.activationScripts.postActivation.text = ''

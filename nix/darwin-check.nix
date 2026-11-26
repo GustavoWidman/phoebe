@@ -85,6 +85,10 @@ pkgs.runCommandLocal "phoebe-darwin-module"
     node = json (
       facts (
         system "altar" {
+          services.phoebe.textfileDirectories = [
+            "/var/lib/backup/metrics"
+            "/var/lib/jobs/*/metrics"
+          ];
           services.phoebe.web = {
             enable = true;
             publicOrigin = "https://phoebe.example.com";
@@ -159,9 +163,13 @@ pkgs.runCommandLocal "phoebe-darwin-module"
     jq -e '.daemons["phoebe-web-cert"].StartInterval == 3600' $node
     jq -e '.alertmanager.receivers[0].webhook_configs == [{url: "http://127.0.0.1:7981/hook", send_resolved: true}]' $node
     jq -e '.daemons["phoebe-web"].StandardOutPath == "/var/log/phoebe-web.log"' $node
+    # the node exporter serves phoebe's own textfiles, then the machine's
     jq -e '.exporter == {listenAddress: "100.64.0.2", port: 9100,
-      extraFlags: ["--collector.textfile.directory=/var/lib/phoebe/textfile"]}' $node
-    jq -e '.exporter.listenAddress == "100.64.0.3"' $agent
+      extraFlags: ["--collector.textfile.directory=/var/lib/phoebe/textfile",
+        "--collector.textfile.directory=/var/lib/backup/metrics",
+        "--collector.textfile.directory=/var/lib/jobs/*/metrics"]}' $node
+    jq -e '.exporter == {listenAddress: "100.64.0.3", port: 9100,
+      extraFlags: ["--collector.textfile.directory=/var/lib/phoebe/textfile"]}' $agent
     jq -e '.loki.server.http_listen_address == "100.64.0.2" and .loki.server.grpc_listen_address == "127.0.0.1"' $node
     jq -e '.vector.sinks.metrics.address == "100.64.0.3:9598"' $agent
 
