@@ -40,7 +40,11 @@ in
         services.prometheus.exporters.node = {
           enable = true;
           port = ports.node;
-          enabledCollectors = [ "systemd" ];
+          enabledCollectors = [
+            "systemd"
+            "textfile"
+          ];
+          extraFlags = map (dir: "--collector.textfile.directory=${dir}") cfg.textfileDirectories;
         };
 
         services.vector = {
