@@ -199,6 +199,7 @@ let
       "phoebe_launchd_job_failed{${labels}}";
 
   units = filterAttrs (_: service: service.unit != null) services;
+  heartbeats = filterAttrs (_: service: service.heartbeat != null) services;
   alwaysOn = attrNames (filterAttrs (_: machine: machine.alwaysOn) machines);
   agree = min 2 (length nodes);
 
@@ -233,6 +234,34 @@ let
             };
           }
         ) units
+        ++ concatLists (
+          mapAttrsToList (
+            name: service:
+            let
+              inherit (service.heartbeat) metric within;
+              gauge = ''${metric}{machine="${service.machine}"}'';
+              # two rules of one name and labels, a gauge behind and a gauge
+              # missing, which never hold at once. promtool lints them as
+              # duplicates, a warning meant for recording rules. they wait as
+              # long as MachineDown, so a machine going down, whose gauges go
+              # missing with it, fires MachineDown first
+              stale =
+                expr: summary:
+                (rule "ServiceStale" "page" expr "5m" summary)
+                // {
+                  labels = {
+                    severity = "page";
+                    service = name;
+                  };
+                };
+            in
+            [
+              (stale "time() - max by (machine) (${gauge}) > ${toString within}" "${name} last reported healthy {{ $value | humanizeDuration }} ago on {{ $labels.machine }}")
+              # absent() keeps the machine label of the gauge's matcher
+              (stale "absent(${gauge})" "${metric} of ${name} is missing on {{ $labels.machine }}")
+            ]
+          ) heartbeats
+        )
         ++ [
           (rule "UnitFailed" "info" (
             ''(node_systemd_unit_state{state="failed"} == 1 or phoebe_launchd_job_failed == 1)''
@@ -318,7 +347,9 @@ let
     inhibit_rules = [
       {
         source_matchers = [ ''alertname="MachineDown"'' ];
-        target_matchers = [ ''alertname=~"ServiceUnreachable|UnitFailed|NodeUnhealthy|CertExpiring"'' ];
+        target_matchers = [
+          ''alertname=~"ServiceUnreachable|ServiceStale|UnitFailed|NodeUnhealthy|CertExpiring"''
+        ];
         equal = [ "machine" ];
       }
     ];
@@ -496,7 +527,12 @@ let
     inherit (cfg) machine;
     machines = lib.mapAttrs (_: machine: { inherit (machine) os alwaysOn address; }) machines;
     services = lib.mapAttrs (_: service: {
-      inherit (service) machine unit metrics;
+      inherit (service)
+        machine
+        unit
+        metrics
+        heartbeat
+        ;
       probes = map (probe: {
         inherit (probe)
           kind
