@@ -1,6 +1,7 @@
 # two nodes and a machine that only sends, on one network standing in for
 # the tailnet. the agent runs a demo unit and a web server every node
-# probes. each node runs the app, which its alertmanager posts to, and a
+# probes, and serves the heartbeat of a batch job, long stale, from a
+# textfile directory of its own; another job's heartbeat it never writes. each node runs the app, which its alertmanager posts to, and a
 # push service on loopback that the app pushes to. a tailscale CLI of the
 # test's own stands in for the tailnet's: it says each machine is in it, and
 # whois grants phoebe's capability to every address but the agent's. a
@@ -57,6 +58,20 @@ let
                   target = "http://agent:8000/";
                 }
               ];
+            };
+            batch = {
+              machine = "agent";
+              heartbeat = {
+                metric = "batch_healthy_timestamp_seconds";
+                within = 60;
+              };
+            };
+            ghost = {
+              machine = "agent";
+              heartbeat = {
+                metric = "ghost_healthy_timestamp_seconds";
+                within = 60;
+              };
             };
           };
         };
@@ -185,6 +200,13 @@ in
         };
 
         networking.firewall.allowedTCPPorts = [ 8000 ];
+
+        # batch was last healthy in 2001
+        services.phoebe.textfileDirectories = [ "/etc/heartbeats/*" ];
+        environment.etc."heartbeats/batch/batch.prom".text = ''
+          batch_healthy_timestamp_seconds 1000000000
+        '';
+
         environment.systemPackages = [
           pkgs.jq
           (browser pkgs)
@@ -292,7 +314,7 @@ in
                     [v["node"] for v in p["views"]] == ["node1", "node2"]
                     for s in fleet["services"] for p in s["probes"]
                 )
-                and all(s["unit"]["state"] == "active" for s in fleet["services"]),
+                and all(s["unit"] is None or s["unit"]["state"] == "active" for s in fleet["services"]),
             )
 
     with subtest("a line logged on the agent reaches both lokis"):
@@ -331,14 +353,17 @@ in
         ))
         assert alert["summary"] == "demo failed on agent", alert
 
+        def pushed(title):
+            return [(by, push) for by, push in pushes() if push["message"]["notification"]["title"] == title]
+
         for _ in range(60):
-            if pushes():
+            if pushed("demo failed on agent"):
                 break
             node1.sleep(5)
         # the second alertmanager in the cluster waits 15 seconds for the
         # first one's notice before it would send its own
         node1.sleep(60)
-        sent = pushes()
+        sent = pushed("demo failed on agent")
         assert len(sent) == 1, sent
         by, push = sent[0]
         assert push["path"] == "/push/phone", push
@@ -361,6 +386,52 @@ in
                 f"browser curl /api/alerts/{alert['id']} -f | jq -e {shlex.quote(notified)}",
                 timeout=120,
             )
+
+    with subtest("a gauge in a textfile directory reaches both prometheus"):
+        agent.succeed("curl -sf localhost:9100/metrics | grep '^batch_healthy_timestamp_seconds ' > /dev/null")
+        for node in nodes:
+            prometheus(node, 'batch_healthy_timestamp_seconds{machine="agent"}', 'map(.value[1]) == ["1000000000"]')
+
+    with subtest("a stale heartbeat and a missing one page, each with its service and machine"):
+        # the gauges were stale and missing from boot; ServiceStale waits 5 minutes
+        stale = 'map(.metric | del(.__name__, .alertname, .alertstate)) | sort_by(.service) == ' + json.dumps([
+            {"machine": "agent", "service": "batch", "severity": "page"},
+            {"machine": "agent", "service": "ghost", "severity": "page"},
+        ])
+        for node in nodes:
+            prometheus(node, 'ALERTS{alertname="ServiceStale", alertstate="firing"}', stale, timeout=600)
+        for node in nodes:
+            fleet = streamed(
+                node,
+                lambda fleet: sorted(
+                    (a["service"], a["machine"], a["seen_by"]) for a in fleet["alerts"]
+                    if (a["rule"], a["state"]["kind"]) == ("ServiceStale", "firing")
+                ) == [("batch", "agent", ["node1", "node2"]), ("ghost", "agent", ["node1", "node2"])],
+            )
+            beats = {s["name"]: s["heartbeat"] for s in fleet["services"] if s["heartbeat"]}
+            assert beats["batch"]["state"] == "late" and beats["batch"]["healthy_at"] == 1000000000000, beats
+            assert beats["ghost"]["state"] == "missing" and beats["ghost"]["healthy_at"] is None, beats
+        alerts = json.loads(node1.succeed("browser curl /api/alerts -f"))
+        summaries = {a["service"]: a["summary"] for a in alerts if a["rule"] == "ServiceStale"}
+        assert summaries["batch"].startswith("batch last reported healthy "), summaries
+        assert summaries["batch"].endswith(" ago on agent"), summaries
+        assert summaries["ghost"] == "ghost_healthy_timestamp_seconds of ghost is missing on agent", summaries
+
+        # the push is titled with the summary as it was when it was sent
+        def stale_pushed():
+            titles = [
+                push["message"]["notification"]["title"] for _, push in pushes()
+                if push["message"]["notification"]["body"] == "ServiceStale, firing"
+            ]
+            return "ghost_healthy_timestamp_seconds of ghost is missing on agent" in titles and any(
+                t.startswith("batch last reported healthy ") and t.endswith(" ago on agent") for t in titles
+            )
+
+        for _ in range(24):
+            if stale_pushed():
+                break
+            node1.sleep(5)
+        assert stale_pushed(), pushes()
 
     with subtest("a node is in the tunnel only while its stores answer"):
         node1.wait_until_succeeds("journalctl -u phoebe-web | grep -q 'ready to serve'", timeout=60)
