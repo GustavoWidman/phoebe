@@ -1,7 +1,7 @@
 <!-- a service: who reaches it, and the median latency from the nodes that do -->
 <script lang="ts">
 	import { latency } from '#lib/derive/format.ts';
-	import type { ServiceStatus } from '#lib/derive/status.ts';
+	import { checkWord, staleSay, type ServiceStatus } from '#lib/derive/status.ts';
 	import { href } from '#lib/router.svelte.ts';
 	import Dot from '#lib/ui/Dot.svelte';
 	import Pips from '#lib/ui/Pips.svelte';
@@ -19,6 +19,8 @@
 		<div class="sb" class:warn={short && st.dot === 'warn'} class:bad={st.dot === 'bad'}>
 			{#if unitFailed}
 				{s.unit?.name} failed
+			{:else if st.stale}
+				{staleSay(s)}
 			{:else if short}
 				{st.reached?.ok} of {st.reached?.of} nodes reach it
 			{:else}
@@ -31,7 +33,7 @@
 			<Pips dots={st.reach.map((r) => (r.ok === false ? 'bad' : r.ok ? 'ok' : 'idle'))} />
 			<span class="lat">{latency(st.median)}</span>
 		{:else}
-			<span class:bad={unitFailed}>{s.unit?.state ?? ''}</span>
+			<span class:bad={unitFailed || st.stale}>{checkWord(s)}</span>
 		{/if}
 	</span>
 </a>

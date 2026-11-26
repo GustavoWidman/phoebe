@@ -6,7 +6,7 @@
 	import { untrack } from 'svelte';
 	import { Load, RANGES, seriesUrl, type Range } from '#lib/api.svelte.ts';
 	import Band from '#lib/alert/Band.svelte';
-	import { latency, when } from '#lib/derive/format.ts';
+	import { dur, latency, when } from '#lib/derive/format.ts';
 	import { alertsOn, hostOf, median, serviceStatus, timesOut } from '#lib/derive/status.ts';
 	import { LogFeed } from '#lib/log/feed.svelte.ts';
 	import { href } from '#lib/router.svelte.ts';
@@ -71,6 +71,10 @@
 			: ok
 				? `${s.probes.length === 1 ? 'probe' : `${s.probes.length} probes`} ok`
 				: 'timeout';
+	const beat = $derived(
+		s.heartbeat &&
+			`heartbeat ${s.heartbeat.state}${s.heartbeat.healthy_at ? ` · last healthy ${when(s.heartbeat.healthy_at, snap.at)}` : ''}`
+	);
 	const unitDot = $derived(
 		s.unit?.state === 'active'
 			? 'ok'
@@ -99,6 +103,8 @@
 			{st.reached.ok} of {st.reached.of} nodes reach it{st.failing.length
 				? ` · ${timesOut(st.failing, snap.at)}`
 				: ''}
+		{:else if beat && (st.stale || !s.unit)}
+			{beat}
 		{:else}
 			{s.unit ? `${s.unit.name} ${s.unit.state}` : 'nothing to probe'}{s.unit?.since
 				? ` since ${when(s.unit.since, snap.at)}`
@@ -241,6 +247,24 @@
 			<dt>since</dt>
 			<dd class="m">{when(s.unit.since, snap.at)}</dd>
 		</div>{/if}
+	{#if s.heartbeat}
+		<div>
+			<dt>heartbeat</dt>
+			<dd class:ok={s.heartbeat.state === 'fresh'} class:bad={st.stale}>{s.heartbeat.state}</dd>
+		</div>
+		<div>
+			<dt>gauge</dt>
+			<dd class="m ell">{s.heartbeat.metric}</dd>
+		</div>
+		{#if s.heartbeat.healthy_at}<div>
+				<dt>last healthy</dt>
+				<dd class="m">{when(s.heartbeat.healthy_at, snap.at)}</dd>
+			</div>{/if}
+		<div>
+			<dt>within</dt>
+			<dd class="m">{dur(s.heartbeat.within_ms)}</dd>
+		</div>
+	{/if}
 	{#each s.probes as p (p.target)}
 		<div>
 			<dt>{p.kind} probe</dt>

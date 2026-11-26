@@ -88,6 +88,7 @@ fn sample(mut series: Series) -> Series {
 struct Other {
     machines: Vec<Machine>,
     units: Vec<UnitStatus>,
+    heartbeats: Vec<Heartbeat>,
     probes: Vec<Probe>,
     lines: Vec<LogLine>,
 }
@@ -114,6 +115,18 @@ fn other() -> Other {
             unit("nfs-server.service", UnitState::Inactive, Some(at(-90_000))),
             unit("lavalink.service", UnitState::Unknown, None),
         ],
+        heartbeats: [
+            (HeartbeatState::Late, Some(at(-5_400_000))),
+            (HeartbeatState::Missing, None),
+            (HeartbeatState::Unknown, None),
+        ]
+        .map(|(state, healthy_at)| Heartbeat {
+            metric: "dns_sync_healthy_timestamp_seconds".into(),
+            within_ms: 3_600_000,
+            state,
+            healthy_at,
+        })
+        .into(),
         probes: vec![Probe {
             kind: ProbeKind::Dns,
             target: "dns.r3dlust.com:53".into(),

@@ -59,6 +59,9 @@ pub enum Named {
     ProbeFirst,
     /// the earliest certificate expiry a probe was served, as any node sees it
     CertExpiry,
+    /// the unix time each registry service with a heartbeat last knew itself
+    /// healthy, from the gauge on its machine, by service
+    Heartbeat,
     /// milliseconds the slowest of a service's probes took from each
     /// prober; unset while one of them fails
     Latency,
@@ -74,7 +77,7 @@ pub enum Named {
 }
 
 impl Named {
-    pub const SNAPSHOT: [Self; 25] = [
+    pub const SNAPSHOT: [Self; 26] = [
         Self::Up,
         Self::LastUp,
         Self::LastDown,
@@ -100,6 +103,7 @@ impl Named {
         Self::ProbeLastFailed,
         Self::ProbeFirst,
         Self::CertExpiry,
+        Self::Heartbeat,
     ];
 
     /// its name, which recorded answers are kept under
@@ -208,6 +212,7 @@ impl Named {
                 "min by (service, target) ({})",
                 sel("probe_ssl_earliest_cert_expiry", "")
             ),
+            Self::Heartbeat => heartbeats(registry, &sel),
             Self::Latency => format!(
                 "max by (prober) ({}) * 1000 unless on (prober) (min by (prober) ({}) == 0)",
                 sel("probe_duration_seconds", ""),
@@ -246,6 +251,25 @@ fn unit_state(sel: &impl Fn(&str, &str) -> String, units: &str) -> String {
         r#"{} or label_replace({launchd}, "state", "failed", "", "") or label_replace(1 - {launchd}, "state", "active", "", "")"#,
         sel("node_systemd_unit_state", units)
     )
+}
+
+/// each heartbeat's gauge on its machine, labelled with its service
+fn heartbeats(registry: &Registry, sel: &impl Fn(&str, &str) -> String) -> String {
+    let each: Vec<String> = registry
+        .heartbeats()
+        .map(|(service, machine, heartbeat)| {
+            format!(
+                r#"label_replace(max by (machine) ({}), "service", {}, "", "")"#,
+                sel(&heartbeat.metric, &matcher("machine", &machine.0)),
+                quote(&service.0)
+            )
+        })
+        .collect();
+    if each.is_empty() {
+        // no service has a heartbeat: a query that answers nothing
+        return "vector(0) > 0".to_owned();
+    }
+    each.join(" or ")
 }
 
 /// a PromQL or LogQL string literal: both take Go's escapes, which JSON's are

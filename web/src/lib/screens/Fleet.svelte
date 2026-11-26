@@ -11,6 +11,7 @@
 	import { date, hm, latency, load, pct, dur } from '#lib/derive/format.ts';
 	import {
 		byPresence,
+		checkWord,
 		firingOf,
 		headline,
 		machineDot,
@@ -182,7 +183,7 @@
 								points={medianPoints(lat.get(s.name)?.value)}
 								w={64}
 								h={16}
-							/>{:else}{s.unit?.state ?? ''}{/if}
+							/>{:else}{checkWord(s)}{/if}
 					</td>
 				</tr>
 			{/each}

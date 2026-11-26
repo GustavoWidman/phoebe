@@ -48,3 +48,14 @@ test('a summary that starts with an identifier keeps its spelling', () => {
 		'The certificate expires in 8d.'
 	);
 });
+
+test('a heartbeat that is late or missing fails its service; one nobody can read idles it', () => {
+	const sync = snap.services.find((s) => s.heartbeat && !s.unit && !s.probes.length);
+	expect(sync?.heartbeat?.state).toBe('fresh');
+	expect(serviceStatus(sync!, snap.nodes)).toMatchObject({ dot: 'ok', stale: false });
+	const as = (state: 'late' | 'missing' | 'unknown') =>
+		serviceStatus({ ...sync!, heartbeat: { ...sync!.heartbeat!, state } }, snap.nodes);
+	expect(as('late')).toMatchObject({ dot: 'bad', stale: true });
+	expect(as('missing')).toMatchObject({ dot: 'bad', stale: true });
+	expect(as('unknown')).toMatchObject({ dot: 'idle', stale: false });
+});

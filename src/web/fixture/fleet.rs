@@ -90,6 +90,14 @@ pub struct ServiceSpec {
     pub probes: &'static [ProbeSpec],
     /// what answering costs it, in milliseconds, past the network
     pub overhead_ms: f64,
+    pub heartbeat: Option<HeartbeatSpec>,
+}
+
+/// a batch job's heartbeat: it runs every `every_ms`, healthy each time
+pub struct HeartbeatSpec {
+    pub metric: &'static str,
+    pub every_ms: i64,
+    pub within_ms: i64,
 }
 
 pub struct ProbeSpec {
@@ -122,7 +130,7 @@ const fn tcp(target: &'static str) -> ProbeSpec {
     }
 }
 
-pub const SERVICES: [ServiceSpec; 16] = [
+pub const SERVICES: [ServiceSpec; 17] = [
     ServiceSpec {
         name: "adguard",
         machine: "oracle-2",
@@ -132,6 +140,7 @@ pub const SERVICES: [ServiceSpec; 16] = [
             over_tls(ProbeKind::Tcp, "dns.r3dlust.com:853"),
         ],
         overhead_ms: 0.6,
+        heartbeat: None,
     },
     ServiceSpec {
         name: "copyparty",
@@ -139,6 +148,7 @@ pub const SERVICES: [ServiceSpec; 16] = [
         unit: Some("copyparty.service"),
         probes: &[http("https://files.r3dlust.com")],
         overhead_ms: 5.0,
+        heartbeat: None,
     },
     ServiceSpec {
         name: "derp",
@@ -146,6 +156,19 @@ pub const SERVICES: [ServiceSpec; 16] = [
         unit: Some("tailscale-derper.service"),
         probes: &[http("https://derp.r3dlust.com")],
         overhead_ms: 0.3,
+        heartbeat: None,
+    },
+    ServiceSpec {
+        name: "dns-sync",
+        machine: "oracle-1",
+        unit: None,
+        probes: &[],
+        overhead_ms: 0.0,
+        heartbeat: Some(HeartbeatSpec {
+            metric: "dns_sync_healthy_timestamp_seconds",
+            every_ms: 5 * 60_000,
+            within_ms: 3_600_000,
+        }),
     },
     ServiceSpec {
         name: "heimdall",
@@ -153,6 +176,7 @@ pub const SERVICES: [ServiceSpec; 16] = [
         unit: Some("heimdall.service"),
         probes: &[http("https://heimdall.r3dlust.com/api/health")],
         overhead_ms: 3.0,
+        heartbeat: None,
     },
     ServiceSpec {
         name: "lavalink",
@@ -160,6 +184,7 @@ pub const SERVICES: [ServiceSpec; 16] = [
         unit: Some("lavalink.service"),
         probes: &[],
         overhead_ms: 0.0,
+        heartbeat: None,
     },
     ServiceSpec {
         name: "mail",
@@ -171,6 +196,7 @@ pub const SERVICES: [ServiceSpec; 16] = [
             http("https://mail.r3dlust.com"),
         ],
         overhead_ms: 2.0,
+        heartbeat: None,
     },
     ServiceSpec {
         name: "mcsmanager",
@@ -178,6 +204,7 @@ pub const SERVICES: [ServiceSpec; 16] = [
         unit: Some("arion-mcsmanager.service"),
         probes: &[http("https://minecraft.r3dlust.com")],
         overhead_ms: 6.0,
+        heartbeat: None,
     },
     ServiceSpec {
         name: "nfs",
@@ -185,6 +212,7 @@ pub const SERVICES: [ServiceSpec; 16] = [
         unit: Some("nfs-server.service"),
         probes: &[tcp("lab.tail4a3ea.ts.net:2049")],
         overhead_ms: 0.2,
+        heartbeat: None,
     },
     ServiceSpec {
         name: "niks3",
@@ -192,6 +220,7 @@ pub const SERVICES: [ServiceSpec; 16] = [
         unit: Some("niks3.service"),
         probes: &[http("https://cache.r3dlust.com/nix-cache-info")],
         overhead_ms: 4.0,
+        heartbeat: None,
     },
     ServiceSpec {
         name: "portfolio",
@@ -204,6 +233,7 @@ pub const SERVICES: [ServiceSpec; 16] = [
             http("https://blog.guswid.com"),
         ],
         overhead_ms: 3.0,
+        heartbeat: None,
     },
     ServiceSpec {
         name: "rocky-bot",
@@ -211,6 +241,7 @@ pub const SERVICES: [ServiceSpec; 16] = [
         unit: Some("rocky-bot.service"),
         probes: &[],
         overhead_ms: 0.0,
+        heartbeat: None,
     },
     ServiceSpec {
         name: "rustfs",
@@ -218,6 +249,7 @@ pub const SERVICES: [ServiceSpec; 16] = [
         unit: Some("rustfs.service"),
         probes: &[http("http://lab.tail4a3ea.ts.net:9000/health")],
         overhead_ms: 1.0,
+        heartbeat: None,
     },
     ServiceSpec {
         name: "tailscale-proxy",
@@ -225,6 +257,7 @@ pub const SERVICES: [ServiceSpec; 16] = [
         unit: None,
         probes: &[http("https://tailscale.r3dlust.com/key")],
         overhead_ms: 2.0,
+        heartbeat: None,
     },
     ServiceSpec {
         name: "taproot",
@@ -232,6 +265,7 @@ pub const SERVICES: [ServiceSpec; 16] = [
         unit: Some("taproot.service"),
         probes: &[http("https://lab.tail4a3ea.ts.net:8317/healthz")],
         overhead_ms: 1.5,
+        heartbeat: None,
     },
     ServiceSpec {
         name: "teamspeak6",
@@ -239,6 +273,7 @@ pub const SERVICES: [ServiceSpec; 16] = [
         unit: Some("podman-teamspeak6.service"),
         probes: &[tcp("rockyclan.com:30033")],
         overhead_ms: 0.5,
+        heartbeat: None,
     },
     ServiceSpec {
         name: "yt-cipher",
@@ -246,6 +281,7 @@ pub const SERVICES: [ServiceSpec; 16] = [
         unit: Some("podman-yt-cipher.service"),
         probes: &[],
         overhead_ms: 0.0,
+        heartbeat: None,
     },
 ];
 

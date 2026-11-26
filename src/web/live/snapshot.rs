@@ -250,6 +250,24 @@ fn service(
             since: Some(Ms(since.min(now))),
         }
     });
+    let heartbeat = entry.heartbeat.as_ref().map(|heartbeat| {
+        let within_ms = heartbeat.within as i64 * 1_000;
+        let healthy_at = answers.time(Named::Heartbeat, &[("service", name.0.as_str())]);
+        let state = match healthy_at {
+            _ if !host.up || !answers.series.contains_key(&Named::Heartbeat) => {
+                HeartbeatState::Unknown
+            }
+            None => HeartbeatState::Missing,
+            Some(at) if now - at > within_ms => HeartbeatState::Late,
+            Some(_) => HeartbeatState::Fresh,
+        };
+        Heartbeat {
+            metric: heartbeat.metric.clone(),
+            within_ms,
+            state,
+            healthy_at: healthy_at.map(Ms),
+        }
+    });
     Service {
         name: name.clone(),
         machine: entry.machine.clone(),
@@ -259,6 +277,7 @@ fn service(
             .iter()
             .map(|probe| self::probe(registry, answers, now, name, probe))
             .collect(),
+        heartbeat,
     }
 }
 

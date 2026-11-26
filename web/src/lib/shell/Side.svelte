@@ -5,6 +5,7 @@
 		TREATMENT,
 		alertDot,
 		alertTitle,
+		checkWord,
 		firingOf,
 		machineDot,
 		serviceStatus
@@ -69,7 +70,7 @@
 		{#if st.reached}
 			<Pips dots={st.reach.map((r) => (r.ok === false ? 'bad' : r.ok ? 'ok' : 'idle'))} />
 		{:else}
-			<small class:bad={s.unit?.state === 'failed'}>{s.unit?.state ?? ''}</small>
+			<small class:bad={s.unit?.state === 'failed' || st.stale}>{checkWord(s)}</small>
 		{/if}
 	</a>
 {/each}
