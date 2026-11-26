@@ -47,9 +47,16 @@ services.phoebe = {
       probes = [ { kind = "http"; target = "https://heimdall.example.com"; } ];
       metrics = { port = 9200; path = "/metrics"; }; # or null
     };
+    services.backup = {
+      machine = "lab";
+      heartbeat = { metric = "backup_healthy_timestamp_seconds"; within = 86400; };
+    };
   };
   web.enable = true; # on the nodes: the app, see below
 };
+
+# on lab, where the backup job writes its gauge
+services.phoebe.textfileDirectories = [ "/var/lib/backup/metrics" ];
 ```
 
 - **`nodes`** are the machines that store and serve. a machine finds out it's
@@ -63,6 +70,18 @@ services.phoebe = {
   answers 2xx), `tcp`, `smtp` and `imap` (a `host:port`, with `tls = true` for
   the ports that start with TLS), and `dns` (a server, plus the `query` it
   should answer).
+- **`heartbeat`** is for a service that serves nothing and whose unit never
+  fails, a timer's oneshot that exits 0 whatever happened, say. it names a
+  gauge on the service's machine holding the unix time the service last knew
+  itself healthy, and `within`, how many seconds it may fall behind. the job
+  keeps the gauge, and it stops moving both when runs go wrong and when they
+  stop happening, which is the point: either way `ServiceStale` pages. a
+  service can have a heartbeat beside a unit and probes, or nothing else.
+
+every machine's node exporter serves the `*.prom` files of
+`services.phoebe.textfileDirectories` (globs allowed, empty by default), so
+a job writes its gauge into a file there and every node scrapes it. the
+directory has to be readable by the node exporter's user.
 
 every machine writes the registry to `/etc/phoebe/fleet.json`, with its own
 name as `machine`, for the app to draw from.
@@ -136,6 +155,7 @@ only shows up in the app.
 | `UnitFailed` | page | a registry service's unit or launchd job has failed for a minute |
 | `UnitFailed` | info | any other systemd unit, or `org.nixos.*` job, has failed for a minute |
 | `ServiceUnreachable` | page | at least two nodes see the same probe fail for 5 minutes (one, in a fleet of one node) |
+| `ServiceStale` | page | a registry service's heartbeat is more than `within` seconds behind, or missing from its machine, for 5 minutes |
 | `CertExpiring` | info | a probed certificate expires within 14 days |
 | `DiskAlmostFull` | page | a writable filesystem is under 10% free for 15 minutes. macos's helper volumes (Preboot, Update, VM and the like) share their container's space with the data volume, so only the data volume counts |
 | `DiskFillingFast` | info | a filesystem under 25% free will be full within a day, at the last 6 hours' rate |
@@ -145,11 +165,12 @@ only shows up in the app.
 alertmanager groups notifications by alert, machine and service, and posts
 them to `alerting.webhook` in its webhook format. on a node running the app,
 that's the app's hook unless set otherwise. while `MachineDown` fires
-for a machine, it holds back that machine's `ServiceUnreachable`, `UnitFailed`,
-`NodeUnhealthy` and `CertExpiring`, so a machine going down is one
-notification. that only works because `MachineDown` fires first: its scrapes
-fail within 15 seconds and probes within a minute, and both rules wait 5
-minutes.
+for a machine, it holds back that machine's `ServiceUnreachable`,
+`ServiceStale`, `UnitFailed`, `NodeUnhealthy` and `CertExpiring`, so a
+machine going down is one notification. that only works because
+`MachineDown` fires first: its scrapes fail within 15 seconds, probes within
+a minute, and a heartbeat goes missing with the scrape that lost it, and all
+three rules wait 5 minutes.
 
 ## the app
 
@@ -296,6 +317,9 @@ counted as not seeing it.
   its `UnitFailed` went pending.
 - **probes** are one view per node, from `probe_success` and
   `probe_duration_seconds` labelled with the node that ran them.
+- **heartbeats** are fresh, late (behind by more than `within`), missing
+  (the machine answers without the gauge) or unknown (the machine doesn't
+  answer). late or missing fails the service, as a failed unit does.
 - **alerts** are the cluster's firing ones, then those that resolved in the
   last day, which come from this node's `ALERTS` series. an alert's id is
   alertmanager's fingerprint, which phoebe works out from an `ALERTS`
@@ -314,6 +338,7 @@ every PromQL phoebe sends lives in one table, `src/web/live/promql.rs`:
 | units | `node_systemd_unit_state` and `phoebe_launchd_job_failed`, `ALERTS_FOR_STATE{alertname="UnitFailed"}` |
 | stores | `up{job=~"prometheus\|loki\|alertmanager\|blackbox"}` |
 | probes | `probe_success`, `probe_duration_seconds`, `probe_ssl_earliest_cert_expiry` |
+| heartbeats | each heartbeat's gauge on its machine, labelled with its service |
 | latency | the slowest probe of a service from each node, in ms, unless one fails |
 | alerts | `ALERTS`, `ALERTS{alertstate="firing"}` and its `max_over_time` |
 
@@ -384,7 +409,7 @@ cd web && bun install && bun run dev
 ```
 
 the simulated fleet is the real one, with the same six machines, sixteen
-services and their probes. its clock starts at 15:42 on 2026-11-25 with
+services and their probes, plus a dns sync job whose heartbeat stays fresh. its clock starts at 15:42 on 2026-11-25 with
 lavalink failed on oracle-1 (a page), derp's certificate about to expire
 (info), a full disk on oracle-2 resolved two hours earlier, lab unable to
 reach r3dlust.com while every other node can, and both desktops resting.
