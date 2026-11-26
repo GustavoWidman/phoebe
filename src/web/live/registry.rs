@@ -33,6 +33,27 @@ pub struct ServiceEntry {
     pub machine: Hostname,
     pub unit: Option<String>,
     pub probes: Vec<ProbeEntry>,
+    pub heartbeat: Option<HeartbeatEntry>,
+}
+
+/// a gauge on the service's machine, holding the unix time the service
+/// last knew itself healthy
+#[derive(Clone, Debug, Deserialize)]
+pub struct HeartbeatEntry {
+    /// a Prometheus metric name, checked as one at parse
+    pub metric: String,
+    /// seconds the gauge may fall behind
+    pub within: u64,
+}
+
+/// whether `name` is a Prometheus metric name, `[a-zA-Z_:][a-zA-Z0-9_:]*`,
+/// which PromQL takes as it is
+fn is_metric_name(name: &str) -> bool {
+    let mut chars = name.chars();
+    chars
+        .next()
+        .is_some_and(|c| c.is_ascii_alphabetic() || c == '_' || c == ':')
+        && chars.all(|c| c.is_ascii_alphanumeric() || c == '_' || c == ':')
 }
 
 #[derive(Clone, Debug, Deserialize)]
@@ -89,6 +110,16 @@ impl Registry {
                 bail!("{name} is named, but not among the machines");
             }
         }
+        for (name, service) in &registry.services {
+            if let Some(heartbeat) = &service.heartbeat
+                && !is_metric_name(&heartbeat.metric)
+            {
+                bail!(
+                    "the heartbeat of {name}, {:?}, is not a metric name",
+                    heartbeat.metric
+                );
+            }
+        }
         if !registry.nodes.contains(&registry.machine) {
             bail!(
                 "{} is not a node, so it has no stores to read",
@@ -114,6 +145,16 @@ impl Registry {
                 .unit
                 .as_deref()
                 .map(|unit| (name, &service.machine, unit))
+        })
+    }
+
+    /// the heartbeats of every service that has one, with their machines
+    pub fn heartbeats(&self) -> impl Iterator<Item = (&ServiceName, &Hostname, &HeartbeatEntry)> {
+        self.services.iter().filter_map(|(name, service)| {
+            service
+                .heartbeat
+                .as_ref()
+                .map(|heartbeat| (name, &service.machine, heartbeat))
         })
     }
 }

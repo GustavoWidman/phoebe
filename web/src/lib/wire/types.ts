@@ -143,6 +143,8 @@ export type Service = {
   unit: UnitStatus | null;
   /** in registry order */
   probes: Array<Probe>;
+  /** unset for a service that reports no heartbeat */
+  heartbeat: Heartbeat | null;
 };
 
 export type UnitStatus = {
@@ -154,6 +156,18 @@ export type UnitStatus = {
 };
 
 export type UnitState = "active" | "activating" | "inactive" | "failed" | "unknown";
+
+/** a gauge on the service's machine, holding when the service last knew itself healthy */
+export type Heartbeat = {
+  metric: string;
+  /** how far behind the gauge may fall before ServiceStale fires */
+  within_ms: number;
+  state: HeartbeatState;
+  /** the last moment the service knew itself healthy; unset while the gauge is missing */
+  healthy_at: Ms | null;
+};
+
+export type HeartbeatState = "fresh" | "late" | "missing" | "unknown";
 
 /** one probe of a service, as every node that answered runs it */
 export type Probe = {

@@ -250,6 +250,8 @@ pub struct Service {
     pub unit: Option<UnitStatus>,
     /// in registry order
     pub probes: Vec<Probe>,
+    /// unset for a service that reports no heartbeat
+    pub heartbeat: Option<Heartbeat>,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize)]
@@ -271,6 +273,34 @@ pub enum UnitState {
     Activating,
     Inactive,
     Failed,
+    /// its machine is not answering
+    Unknown,
+}
+
+/// a gauge on the service's machine, holding when the service last knew
+/// itself healthy
+#[derive(Clone, Debug, PartialEq, Eq, Serialize)]
+#[cfg_attr(test, derive(ts_rs::TS))]
+pub struct Heartbeat {
+    pub metric: String,
+    /// how far behind the gauge may fall before ServiceStale fires
+    pub within_ms: i64,
+    pub state: HeartbeatState,
+    /// the last moment the service knew itself healthy; unset while the
+    /// gauge is missing
+    pub healthy_at: Option<Ms>,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize)]
+#[cfg_attr(test, derive(ts_rs::TS))]
+#[serde(rename_all = "snake_case")]
+pub enum HeartbeatState {
+    /// healthy within `within_ms`
+    Fresh,
+    /// last healthy longer ago than `within_ms`
+    Late,
+    /// its machine answers, without the gauge
+    Missing,
     /// its machine is not answering
     Unknown,
 }

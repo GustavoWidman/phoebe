@@ -44,3 +44,13 @@ test('a message off the contract names where it went wrong', () => {
 		new ParseError('stream.machines[0].state.kind: not up or down or resting')
 	);
 });
+
+test('a service from a server that sends no heartbeat has none', () => {
+	const snapshot = (contract.stream as { kind: string }[]).find((m) => m.kind === 'snapshot')!;
+	const older = structuredClone(snapshot) as unknown as { services: { heartbeat?: unknown }[] };
+	for (const s of older.services) delete s.heartbeat;
+	const parsed = parseStreamEvent(JSON.stringify(older));
+	expect(parsed.kind === 'snapshot' && parsed.services.every((s) => s.heartbeat === null)).toBe(
+		true
+	);
+});

@@ -283,7 +283,8 @@
                 }
               ]
             }
-          ]
+          ],
+          "heartbeat": null
         },
         {
           "name": "copyparty",
@@ -326,7 +327,8 @@
                 }
               ]
             }
-          ]
+          ],
+          "heartbeat": null
         },
         {
           "name": "derp",
@@ -369,7 +371,20 @@
                 }
               ]
             }
-          ]
+          ],
+          "heartbeat": null
+        },
+        {
+          "name": "dns-sync",
+          "machine": "oracle-1",
+          "unit": null,
+          "probes": [],
+          "heartbeat": {
+            "metric": "dns_sync_healthy_timestamp_seconds",
+            "within_ms": 3600000,
+            "state": "fresh",
+            "healthy_at": 1795632000000
+          }
         },
         {
           "name": "heimdall",
@@ -412,7 +427,8 @@
                 }
               ]
             }
-          ]
+          ],
+          "heartbeat": null
         },
         {
           "name": "lavalink",
@@ -422,7 +438,8 @@
             "state": "failed",
             "since": 1795629510000
           },
-          "probes": []
+          "probes": [],
+          "heartbeat": null
         },
         {
           "name": "mail",
@@ -529,7 +546,8 @@
                 }
               ]
             }
-          ]
+          ],
+          "heartbeat": null
         },
         {
           "name": "mcsmanager",
@@ -572,7 +590,8 @@
                 }
               ]
             }
-          ]
+          ],
+          "heartbeat": null
         },
         {
           "name": "nfs",
@@ -615,7 +634,8 @@
                 }
               ]
             }
-          ]
+          ],
+          "heartbeat": null
         },
         {
           "name": "niks3",
@@ -658,7 +678,8 @@
                 }
               ]
             }
-          ]
+          ],
+          "heartbeat": null
         },
         {
           "name": "portfolio",
@@ -793,7 +814,8 @@
                 }
               ]
             }
-          ]
+          ],
+          "heartbeat": null
         },
         {
           "name": "rocky-bot",
@@ -803,7 +825,8 @@
             "state": "active",
             "since": 1793630520000
           },
-          "probes": []
+          "probes": [],
+          "heartbeat": null
         },
         {
           "name": "rustfs",
@@ -846,7 +869,8 @@
                 }
               ]
             }
-          ]
+          ],
+          "heartbeat": null
         },
         {
           "name": "tailscale-proxy",
@@ -885,7 +909,8 @@
                 }
               ]
             }
-          ]
+          ],
+          "heartbeat": null
         },
         {
           "name": "taproot",
@@ -928,7 +953,8 @@
                 }
               ]
             }
-          ]
+          ],
+          "heartbeat": null
         },
         {
           "name": "teamspeak6",
@@ -971,7 +997,8 @@
                 }
               ]
             }
-          ]
+          ],
+          "heartbeat": null
         },
         {
           "name": "yt-cipher",
@@ -981,7 +1008,8 @@
             "state": "active",
             "since": 1793630520000
           },
-          "probes": []
+          "probes": [],
+          "heartbeat": null
         }
       ],
       "alerts": [
@@ -1644,6 +1672,26 @@
         "name": "lavalink.service",
         "state": "unknown",
         "since": null
+      }
+    ],
+    "heartbeats": [
+      {
+        "metric": "dns_sync_healthy_timestamp_seconds",
+        "within_ms": 3600000,
+        "state": "late",
+        "healthy_at": 1795626720000
+      },
+      {
+        "metric": "dns_sync_healthy_timestamp_seconds",
+        "within_ms": 3600000,
+        "state": "missing",
+        "healthy_at": null
+      },
+      {
+        "metric": "dns_sync_healthy_timestamp_seconds",
+        "within_ms": 3600000,
+        "state": "unknown",
+        "healthy_at": null
       }
     ],
     "probes": [

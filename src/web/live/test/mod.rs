@@ -2,6 +2,7 @@
 //! parsed into the wire types as the live source parses them
 
 mod answers;
+mod heartbeat;
 mod hook;
 mod record;
 

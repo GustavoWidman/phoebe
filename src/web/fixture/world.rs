@@ -140,11 +140,27 @@ fn service(spec: &ServiceSpec, at: i64) -> Service {
                 .collect(),
         })
         .collect();
+    let heartbeat = spec.heartbeat.as_ref().map(|beat| {
+        let (state, healthy_at) = match presence(host, at) {
+            Presence::Up { .. } => (
+                HeartbeatState::Fresh,
+                Some(Ms(at.div_euclid(beat.every_ms) * beat.every_ms)),
+            ),
+            Presence::Away { .. } => (HeartbeatState::Unknown, None),
+        };
+        Heartbeat {
+            metric: beat.metric.into(),
+            within_ms: beat.within_ms,
+            state,
+            healthy_at,
+        }
+    });
     Service {
         name: ServiceName::from(spec.name),
         machine: Hostname::from(spec.machine),
         unit,
         probes,
+        heartbeat,
     }
 }
 

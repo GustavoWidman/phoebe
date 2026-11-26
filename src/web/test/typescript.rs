@@ -55,6 +55,8 @@ pub fn typescript() -> String {
         (Service::docs(), Service::decl(&config)),
         (UnitStatus::docs(), UnitStatus::decl(&config)),
         (UnitState::docs(), UnitState::decl(&config)),
+        (Heartbeat::docs(), Heartbeat::decl(&config)),
+        (HeartbeatState::docs(), HeartbeatState::decl(&config)),
         (Probe::docs(), Probe::decl(&config)),
         (ProbeKind::docs(), ProbeKind::decl(&config)),
         (ProbeView::docs(), ProbeView::decl(&config)),

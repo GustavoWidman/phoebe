@@ -8,6 +8,7 @@ import type {
 	AlertId,
 	FailedUnit,
 	Hardware,
+	Heartbeat,
 	Hello,
 	Line,
 	LogEvent,
@@ -55,6 +56,12 @@ const nullable =
 	<T>(p: Parser<T>): Parser<T | null> =>
 	(v, at) =>
 		v === null ? null : p(v, at);
+
+/** a field an older server does not send yet, as unset */
+const added =
+	<T>(p: Parser<T | null>): Parser<T | null> =>
+	(v, at) =>
+		v === undefined ? null : p(v, at);
 
 const list =
 	<T>(p: Parser<T>): Parser<T[]> =>
@@ -155,7 +162,17 @@ const svc = obj<Service>({
 			since: nullable(ms)
 		})
 	),
-	probes: list(probe)
+	probes: list(probe),
+	heartbeat: added(
+		nullable(
+			obj<Heartbeat>({
+				metric: str,
+				within_ms: num,
+				state: oneOf('fresh', 'late', 'missing', 'unknown'),
+				healthy_at: nullable(ms)
+			})
+		)
+	)
 });
 
 const alert = obj<Alert>({

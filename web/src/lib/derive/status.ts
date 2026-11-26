@@ -54,7 +54,8 @@ const TITLES: Record<string, (a: Alert) => string | null> = {
 	DiskFillingFast: (a) =>
 		a.machine && `${a.labels.mountpoint ?? 'disk'} filling fast on ${a.machine}`,
 	NodeUnhealthy: (a) => a.machine && `${a.labels.job ?? 'a store'} unhealthy on ${a.machine}`,
-	LogsBacklog: (a) => a.machine && `logs backing up on ${a.machine}`
+	LogsBacklog: (a) => a.machine && `logs backing up on ${a.machine}`,
+	ServiceStale: (a) => a.service && `${a.service} stale`
 };
 
 export const alertTitle = (a: Alert) => TITLES[a.rule]?.(a) || a.rule;
@@ -126,6 +127,8 @@ export type ServiceStatus = {
 	median: number | null;
 	/** the nodes that cannot reach it */
 	failing: Reach[];
+	/** its heartbeat is late or missing */
+	stale: boolean;
 };
 
 export function serviceStatus(s: Service, nodes: Node[]): ServiceStatus {
@@ -133,12 +136,15 @@ export function serviceStatus(s: Service, nodes: Node[]): ServiceStatus {
 	const probed = r.filter((x) => x.ok !== null);
 	const failing = probed.filter((x) => x.ok === false);
 	const unitFailed = s.unit?.state === 'failed';
+	const stale = s.heartbeat?.state === 'late' || s.heartbeat?.state === 'missing';
 	const dot: Dot =
-		unitFailed || (probed.length && failing.length === probed.length)
+		unitFailed || stale || (probed.length && failing.length === probed.length)
 			? 'bad'
 			: failing.length
 				? 'warn'
-				: s.unit?.state === 'inactive' || s.unit?.state === 'unknown'
+				: s.unit?.state === 'inactive' ||
+					  s.unit?.state === 'unknown' ||
+					  s.heartbeat?.state === 'unknown'
 					? 'idle'
 					: 'ok';
 	return {
@@ -146,9 +152,17 @@ export function serviceStatus(s: Service, nodes: Node[]): ServiceStatus {
 		reach: r,
 		reached: s.probes.length ? { ok: probed.length - failing.length, of: probed.length } : null,
 		median: median(probed.flatMap((x) => (x.latency == null ? [] : [x.latency]))),
-		failing
+		failing,
+		stale
 	};
 }
+
+/** the word a service with no probes ends its row on: its unit's state, else its heartbeat's */
+export const checkWord = (s: Service) => s.unit?.state ?? s.heartbeat?.state ?? '';
+
+/** what a stale heartbeat says: `heartbeat late`, or `no heartbeat` while it is missing */
+export const staleSay = (s: Service) =>
+	s.heartbeat?.state === 'late' ? 'heartbeat late' : 'no heartbeat';
 
 /** `lab times out since 15:21` */
 export const timesOut = (failing: Reach[], now: Ms) =>
