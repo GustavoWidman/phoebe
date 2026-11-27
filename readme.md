@@ -41,16 +41,23 @@ services.phoebe = {
       desktop = { os = "nixos"; alwaysOn = false; address = "100.64.0.3"; };
       # ...
     };
-    services.heimdall = {
-      machine = "oracle-1";
-      unit = "heimdall.service"; # a launchd label on darwin
-      probes = [ { kind = "http"; target = "https://heimdall.example.com"; } ];
-      metrics = { port = 9200; path = "/metrics"; }; # or null
-    };
-    services.backup = {
-      machine = "lab";
-      heartbeat = { metric = "backup_healthy_timestamp_seconds"; within = 86400; };
-    };
+    services = [
+      {
+        name = "heimdall";
+        machine = "oracle-1";
+        unit = "heimdall.service"; # a launchd label on darwin
+        probes = [ { kind = "http"; target = "https://heimdall.example.com"; } ];
+        metrics = { port = 9200; path = "/metrics"; }; # or null
+      }
+      # one job on two machines, under one name
+      { name = "norn"; machine = "oracle-1"; unit = "norn.service"; }
+      { name = "norn"; machine = "oracle-2"; unit = "norn.service"; }
+      {
+        name = "backup";
+        machine = "lab";
+        heartbeat = { metric = "backup_healthy_timestamp_seconds"; within = 86400; };
+      }
+    ];
   };
   web.enable = true; # on the nodes: the app, see below
 };
@@ -65,7 +72,10 @@ services.phoebe.textfileDirectories = [ "/var/lib/backup/metrics" ];
 - **`machines`** is every machine, nodes included. `address` is its tailnet
   IPv4 address, which every other machine uses to reach it. `alwaysOn = false`
   is for desktops: they show up as off, and never page for it.
-- **`services`** is every service worth watching. `unit` is the full systemd
+- **`services`** is every service worth watching. a service is its `machine`
+  and its `name` together, so norn can run on both oracles under one name,
+  each its own service with its own alerts. one machine running two services
+  of one name fails evaluation, naming the pair. `unit` is the full systemd
   unit name, or the launchd label on darwin. `probes` take `http` (a URL that
   answers 2xx), `tcp`, `smtp` and `imap` (a `host:port`, with `tls = true` for
   the ports that start with TLS), and `dns` (a server, plus the `query` it
@@ -161,6 +171,11 @@ only shows up in the app.
 | `DiskFillingFast` | info | a filesystem under 25% free will be full within a day, at the last 6 hours' rate |
 | `NodeUnhealthy` | page | a node's prometheus, loki, alertmanager or blackbox exporter is down for 5 minutes while its machine is up |
 | `LogsBacklog` | info | a machine's buffer for one node is over half full for 15 minutes |
+
+an alert about a service labels it with the service's `name` as `service`
+beside its `machine`, and its summary names both: "norn on oracle-2 is
+missing norn_healthy_timestamp_seconds". a service's own metrics are
+scraped as the job `service-<machine>-<name>`.
 
 alertmanager groups notifications by alert, machine and service, and posts
 them to `alerting.webhook` in its webhook format. on a node running the app,
@@ -342,6 +357,10 @@ every PromQL phoebe sends lives in one table, `src/web/live/promql.rs`:
 | latency | the slowest probe of a service from each node, in ms, unless one fails |
 | alerts | `ALERTS`, `ALERTS{alertstate="firing"}` and its `max_over_time` |
 
+a service's series are the ones labelled with both its name and its
+machine, so two services of one name never read each other's probes,
+certificates or heartbeats.
+
 the other routes ask when a browser does. a chart is a range query of about
 240 points. a log page is loki's `query_range` over the labels the data
 plane sets (`machine`, `unit` and `level` from the journal, `machine` and
@@ -408,8 +427,9 @@ nix develop -c cargo run --release -- web --fixture --web-dir result-web
 cd web && bun install && bun run dev
 ```
 
-the simulated fleet is the real one, with the same six machines, sixteen
-services and their probes, plus a dns sync job whose heartbeat stays fresh. its clock starts at 15:42 on 2026-11-25 with
+the simulated fleet is the real one, with the same six machines, its
+services and their probes. derp runs on both oracles, and so does norn, the
+dns sync job, whose heartbeats stay fresh. its clock starts at 15:42 on 2026-11-25 with
 lavalink failed on oracle-1 (a page), derp's certificate about to expire
 (info), a full disk on oracle-2 resolved two hours earlier, lab unable to
 reach r3dlust.com while every other node can, and both desktops resting.
@@ -432,9 +452,9 @@ the routes, from either:
 | `GET /api/hello` | the build, the schema version and the sign-in addresses |
 | `GET /api/stream` | server-sent events: the whole fleet on connect, then again at each scrape that changes it |
 | `GET /api/series?of=machine:<name>&metric=<m>&range=<r>` | `[t, value]` points of `cpu`, `mem`, `disk`, `load`, or `net` as `rx` and `tx`, over `1h`, `6h`, `24h` or `7d` |
-| `GET /api/series?of=service:<name>&metric=latency&range=<r>[&node=<node>]` | `[t, min, median, max]` across the nodes, or one node's `[t, value]` |
-| `GET /api/logs?machine=&unit=&service=&q=&before=&limit=` | lines, newest first, and the `before` of the next page |
-| `GET /api/logs/tail?machine=&unit=&service=&q=` | server-sent events: the lines that arrive |
+| `GET /api/series?of=service:<machine>/<name>&metric=latency&range=<r>[&node=<node>]` | `[t, min, median, max]` across the nodes, or one node's `[t, value]` |
+| `GET /api/logs?machine=&unit=&service=<machine>/<name>&q=&before=&limit=` | lines, newest first, and the `before` of the next page |
+| `GET /api/logs/tail?machine=&unit=&service=<machine>/<name>&q=` | server-sent events: the lines that arrive |
 | `GET /api/alerts?range=<r>` | the alerts that fired within the range (24h unless given), newest first |
 | `GET /api/alerts/<id>` | an alert, each node's pending, firing and resolved, who pushed it, and the series that shows it |
 | `GET /api/push` | the key a device subscribes with, the hashes of the subscriptions pushes go to, and the `edit` command |
@@ -465,9 +485,9 @@ straight onto `/alerts/<id>`:
   the last day.
 - **a machine**: cpu, memory, disk, network and load over 1h, 6h, 24h or 7d,
   with a dashed line where its alert fired, then its units and its logs.
-- **a service**: the probe map, where tapping a node charts that node's
-  latency, a row per node, the latency band across all of them, its unit and
-  its logs.
+- **a service**, at `/machines/<machine>/services/<name>`: the probe map,
+  where tapping a node charts that node's latency, a row per node, the
+  latency band across all of them, its unit and its logs.
 - **an alert**: the severity header across the full width, the nodes that see
   it, its timeline, its details, the series that shows it and its logs. a
   resolved alert keeps the screen and drops the severity.
@@ -549,7 +569,7 @@ screen's chunk and everything they import.
 | --- | --- | --- |
 | `/` | 37 KiB | 5 KiB |
 | `/machines/<name>` | 37 KiB | 5 KiB |
-| `/services/<name>` | 39 KiB | 5 KiB |
+| `/machines/<machine>/services/<name>` | 39 KiB | 5 KiB |
 | `/alerts/<id>` | 37 KiB | 5 KiB |
 | `/logs` | 32 KiB | 5 KiB |
 | `/device` | 32 KiB | 5 KiB |
