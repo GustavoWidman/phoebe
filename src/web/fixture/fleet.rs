@@ -1,5 +1,5 @@
 //! the simulated fleet's registry: the real fleet's machines, services and
-//! probes, in the order `services.phoebe.fleet` lists them
+//! probes. derp and norn each run on both oracles, under one name
 
 use crate::web::wire::{Os, ProbeKind, ServiceId};
 
@@ -130,7 +130,7 @@ const fn tcp(target: &'static str) -> ProbeSpec {
     }
 }
 
-pub const SERVICES: [ServiceSpec; 17] = [
+pub const SERVICES: [ServiceSpec; 19] = [
     ServiceSpec {
         name: "adguard",
         machine: "oracle-2",
@@ -152,23 +152,19 @@ pub const SERVICES: [ServiceSpec; 17] = [
     },
     ServiceSpec {
         name: "derp",
+        machine: "oracle-1",
+        unit: Some("tailscale-derper.service"),
+        probes: &[http("https://derp-1.r3dlust.com")],
+        overhead_ms: 0.3,
+        heartbeat: None,
+    },
+    ServiceSpec {
+        name: "derp",
         machine: "oracle-2",
         unit: Some("tailscale-derper.service"),
         probes: &[http("https://derp.r3dlust.com")],
         overhead_ms: 0.3,
         heartbeat: None,
-    },
-    ServiceSpec {
-        name: "dns-sync",
-        machine: "oracle-1",
-        unit: None,
-        probes: &[],
-        overhead_ms: 0.0,
-        heartbeat: Some(HeartbeatSpec {
-            metric: "dns_sync_healthy_timestamp_seconds",
-            every_ms: 5 * 60_000,
-            within_ms: 3_600_000,
-        }),
     },
     ServiceSpec {
         name: "heimdall",
@@ -221,6 +217,30 @@ pub const SERVICES: [ServiceSpec; 17] = [
         probes: &[http("https://cache.r3dlust.com/nix-cache-info")],
         overhead_ms: 4.0,
         heartbeat: None,
+    },
+    ServiceSpec {
+        name: "norn",
+        machine: "oracle-1",
+        unit: None,
+        probes: &[],
+        overhead_ms: 0.0,
+        heartbeat: Some(HeartbeatSpec {
+            metric: "norn_healthy_timestamp_seconds",
+            every_ms: 5 * 60_000,
+            within_ms: 3_600_000,
+        }),
+    },
+    ServiceSpec {
+        name: "norn",
+        machine: "oracle-2",
+        unit: None,
+        probes: &[],
+        overhead_ms: 0.0,
+        heartbeat: Some(HeartbeatSpec {
+            metric: "norn_healthy_timestamp_seconds",
+            every_ms: 5 * 60_000,
+            within_ms: 3_600_000,
+        }),
     },
     ServiceSpec {
         name: "portfolio",

@@ -234,6 +234,11 @@ fn templates(machine: &str) -> &'static [Template] {
             ),
             ("rocky-bot.service", Info, "gateway heartbeat ack 4{n}ms"),
             (
+                "tailscale-derper.service",
+                Info,
+                "derp: {n} clients connected",
+            ),
+            (
                 "tailscaled.service",
                 Debug,
                 "magicsock: endpoints changed: 3 endpoints",

@@ -509,3 +509,62 @@ async fn hello_answers_and_unknown_routes_do_not() {
     assert_eq!(hello["schema"], 2);
     assert_eq!(get(&router, "/api/nothing").await.0, StatusCode::NOT_FOUND);
 }
+
+#[tokio::test]
+async fn a_name_on_two_machines_is_two_services() {
+    let router = simulated();
+    let snapshot = fleet(&router).await;
+    let listed: Vec<(&str, &str)> = snapshot["services"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|service| {
+            (
+                service["name"].as_str().unwrap(),
+                service["machine"].as_str().unwrap(),
+            )
+        })
+        .collect();
+    let mut sorted = listed.clone();
+    sorted.sort();
+    assert_eq!(listed, sorted, "by name, then by machine");
+    let at = |name, machine| listed.iter().position(|id| *id == (name, machine)).unwrap();
+    assert_eq!(at("derp", "oracle-2"), at("derp", "oracle-1") + 1);
+    assert_eq!(at("norn", "oracle-2"), at("norn", "oracle-1") + 1);
+
+    // derp's certificate alert is the one on oracle-2
+    let cert = snapshot["alerts"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|alert| alert["rule"] == "CertExpiring")
+        .unwrap();
+    assert_eq!(
+        cert["service"],
+        serde_json::json!({"name": "derp", "machine": "oracle-2"})
+    );
+
+    // each derp charts its own probe
+    let band =
+        |machine: &str| format!("/api/series?of=service:{machine}/derp&metric=latency&range=1h");
+    let one = json(&router, &band("oracle-1")).await;
+    let two = json(&router, &band("oracle-2")).await;
+    assert_eq!(one["of"]["service"]["machine"], "oracle-1");
+    assert_eq!(two["of"]["service"]["machine"], "oracle-2");
+    assert_ne!(one["data"], two["data"]);
+
+    // and logs its own machine's lines
+    for machine in ["oracle-1", "oracle-2"] {
+        let logs = json(
+            &router,
+            &format!("/api/logs?service={machine}/derp&limit=50"),
+        )
+        .await;
+        let lines = logs["lines"].as_array().unwrap();
+        assert!(!lines.is_empty(), "{machine}");
+        for line in lines {
+            assert_eq!(line["machine"], machine);
+            assert_eq!(line["unit"], "tailscale-derper.service");
+        }
+    }
+}
