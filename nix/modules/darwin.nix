@@ -54,10 +54,8 @@ let
 
   # which of the jobs a fleet service names, or nix-darwin made, failed: its
   # last run exited nonzero and it isn't running again, or it isn't loaded
-  declared = lib.mapAttrsToList (_: service: service.unit) (
-    lib.filterAttrs (
-      _: service: service.machine == cfg.machine && service.unit != null
-    ) cfg.fleet.services
+  declared = map (service: service.unit) (
+    lib.filter (service: service.machine == cfg.machine && service.unit != null) cfg.fleet.services
   );
   launchdState = pkgs.writeShellScript "phoebe-launchd-state" ''
     set -eu

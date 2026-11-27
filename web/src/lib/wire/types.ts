@@ -72,7 +72,7 @@ export type Snapshot = {
   nodes: Array<Node>;
   /** in registry order, nodes included */
   machines: Array<Machine>;
-  /** in registry order */
+  /** by name, then by machine */
   services: Array<Service>;
   /** firing, newest first, then resolved in the last 24 hours, newest first */
   alerts: Array<Alert>;

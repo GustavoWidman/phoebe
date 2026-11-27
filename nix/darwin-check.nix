@@ -31,10 +31,18 @@ let
         address = "100.64.0.3";
       };
     };
-    services.coeus = {
-      machine = "altar";
-      unit = "org.nixos.coeusd";
-    };
+    # coeus on two machines, under one name
+    services =
+      map
+        (machine: {
+          name = "coeus";
+          inherit machine;
+          unit = "org.nixos.coeusd";
+        })
+        [
+          "altar"
+          "laptop"
+        ];
   };
 
   system =
@@ -181,6 +189,8 @@ pkgs.runCommandLocal "phoebe-darwin-module"
 
     jq -e '.fleet | fromjson | .machines.laptop == {os: "darwin", alwaysOn: false, address: "100.64.0.3"}' $node
     jq -e '.fleet | fromjson | .machine == "altar"' $node
+    jq -e '.fleet | fromjson | [.services[] | {name, machine}]
+      == [{name: "coeus", machine: "altar"}, {name: "coeus", machine: "laptop"}]' $node
 
     mkdir -p $out/plists
     for daemon in $(jq -r '.plists | keys[]' $node); do

@@ -456,7 +456,7 @@ pub const INCIDENTS: [Incident; 4] = [
         chart: None,
         summary: |at| {
             format!(
-                "the certificate of https://derp.r3dlust.com expires in {}",
+                "the certificate of https://derp.r3dlust.com, for derp on oracle-2, expires in {}",
                 humanize_duration((DERP_EXPIRY - at) / SECOND)
             )
         },

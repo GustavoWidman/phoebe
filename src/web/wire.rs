@@ -178,7 +178,7 @@ pub struct Snapshot {
     pub nodes: Vec<Node>,
     /// in registry order, nodes included
     pub machines: Vec<Machine>,
-    /// in registry order
+    /// by name, then by machine
     pub services: Vec<Service>,
     /// firing, newest first, then resolved in the last 24 hours, newest first
     pub alerts: Vec<Alert>,

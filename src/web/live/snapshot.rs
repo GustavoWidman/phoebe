@@ -84,7 +84,7 @@ pub fn build(registry: &Registry, answers: &Answers, now: i64, alerts: Vec<Alert
         services: registry
             .services
             .iter()
-            .map(|(name, entry)| service(registry, answers, now, name, entry))
+            .map(|(id, entry)| service(registry, answers, now, id, entry))
             .collect(),
         alerts,
     }
@@ -201,10 +201,11 @@ fn service(
     registry: &Registry,
     answers: &Answers,
     now: i64,
-    name: &ServiceName,
+    id: &ServiceId,
     entry: &ServiceEntry,
 ) -> Service {
-    let host = presence(answers, now, &entry.machine.0);
+    let machine = id.machine.0.as_str();
+    let host = presence(answers, now, machine);
     let unit = entry.unit.as_ref().map(|unit| {
         if !host.up {
             return UnitStatus {
@@ -213,10 +214,7 @@ fn service(
                 since: None,
             };
         }
-        let on = [
-            ("machine", entry.machine.0.as_str()),
-            ("name", unit.as_str()),
-        ];
+        let on = [("machine", machine), ("name", unit.as_str())];
         let current = answers
             .all(Named::UnitState, &on)
             .find(|sample| sample.value == 1.0)
@@ -233,7 +231,7 @@ fn service(
             .time(
                 Named::UnitLeft,
                 &[
-                    ("machine", entry.machine.0.as_str()),
+                    ("machine", machine),
                     ("name", unit.as_str()),
                     ("state", current.as_str()),
                 ],
@@ -252,7 +250,10 @@ fn service(
     });
     let heartbeat = entry.heartbeat.as_ref().map(|heartbeat| {
         let within_ms = heartbeat.within as i64 * 1_000;
-        let healthy_at = answers.time(Named::Heartbeat, &[("service", name.0.as_str())]);
+        let healthy_at = answers.time(
+            Named::Heartbeat,
+            &[("service", id.name.0.as_str()), ("machine", machine)],
+        );
         let state = match healthy_at {
             _ if !host.up || !answers.series.contains_key(&Named::Heartbeat) => {
                 HeartbeatState::Unknown
@@ -269,13 +270,13 @@ fn service(
         }
     });
     Service {
-        name: name.clone(),
-        machine: entry.machine.clone(),
+        name: id.name.clone(),
+        machine: id.machine.clone(),
         unit,
         probes: entry
             .probes
             .iter()
-            .map(|probe| self::probe(registry, answers, now, name, probe))
+            .map(|probe| self::probe(registry, answers, now, id, probe))
             .collect(),
         heartbeat,
     }
@@ -285,11 +286,12 @@ fn probe(
     registry: &Registry,
     answers: &Answers,
     now: i64,
-    service: &ServiceName,
+    service: &ServiceId,
     probe: &ProbeEntry,
 ) -> Probe {
     let target = [
-        ("service", service.0.as_str()),
+        ("service", service.name.0.as_str()),
+        ("machine", service.machine.0.as_str()),
         ("target", probe.target.as_str()),
     ];
     let views = registry
@@ -297,7 +299,8 @@ fn probe(
         .iter()
         .filter_map(|node| {
             let on = [
-                ("service", service.0.as_str()),
+                ("service", service.name.0.as_str()),
+                ("machine", service.machine.0.as_str()),
                 ("target", probe.target.as_str()),
                 ("prober", node.0.as_str()),
             ];
