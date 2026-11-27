@@ -3,6 +3,7 @@
  * the lookups every screen makes into it. The stream opens once, when the app starts, and every
  * screen reads this one store.
  */
+import { servicePath } from '#lib/api.svelte.ts';
 import { parseStreamEvent } from '#lib/wire/parse.ts';
 import type {
 	Alert,
@@ -20,7 +21,10 @@ export class Fleet {
 	link = $state<Link>('connecting');
 
 	machines = $derived(new Map<Hostname, Machine>(this.snapshot?.machines.map((m) => [m.name, m])));
-	services = $derived(new Map<string, Service>(this.snapshot?.services.map((s) => [s.name, s])));
+	/** by {@link servicePath} */
+	services = $derived(
+		new Map<string, Service>(this.snapshot?.services.map((s) => [servicePath(s), s]))
+	);
 	alerts = $derived(new Map<AlertId, Alert>(this.snapshot?.alerts.map((a) => [a.id, a])));
 
 	/** opens the stream; returns what closes it */

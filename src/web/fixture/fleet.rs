@@ -1,7 +1,7 @@
 //! the simulated fleet's registry: the real fleet's machines, services and
 //! probes, in the order `services.phoebe.fleet` lists them
 
-use crate::web::wire::{Os, ProbeKind};
+use crate::web::wire::{Os, ProbeKind, ServiceId};
 
 pub const SERVED_BY: &str = "lab";
 
@@ -289,8 +289,10 @@ pub fn machine(name: &str) -> Option<&'static MachineSpec> {
     MACHINES.iter().find(|machine| machine.name == name)
 }
 
-pub fn service(name: &str) -> Option<&'static ServiceSpec> {
-    SERVICES.iter().find(|service| service.name == name)
+pub fn service(id: &ServiceId) -> Option<&'static ServiceSpec> {
+    SERVICES
+        .iter()
+        .find(|service| service.name == id.name.0 && service.machine == id.machine.0)
 }
 
 impl ProbeSpec {

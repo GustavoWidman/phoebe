@@ -374,11 +374,12 @@ fn a_notice_line_is_found_wherever_the_logger_put_it() {
     assert_eq!(NoticeLine::find("notice of something else"), None);
 }
 
+/// a log query, its service as `<machine>/<name>`
 fn query(machine: Option<&str>, service: Option<&str>, q: Option<&str>) -> LogQuery {
     LogQuery {
         machine: machine.map(Hostname::from),
         unit: None,
-        service: service.map(ServiceName::from),
+        service: service.map(|path| ServiceId::parse(path).unwrap()),
         q: q.map(str::to_owned),
     }
 }
@@ -389,17 +390,24 @@ fn a_log_query_is_one_logql() {
     let logql = |machine, service, q| logs::logql(&registry, &query(machine, service, q));
     assert_eq!(logql(None, None, None).unwrap(), r#"{machine=~".+"}"#);
     assert_eq!(
-        logql(None, Some("heimdall"), None).unwrap(),
+        logql(None, Some("oracle-1/heimdall"), None).unwrap(),
         r#"{machine="oracle-1", unit="heimdall.service"}"#
     );
     assert_eq!(
-        logql(None, Some("tailscale-proxy"), Some("a.b")).unwrap(),
+        logql(None, Some("oracle-2/tailscale-proxy"), Some("a.b")).unwrap(),
         r#"{machine=~".+"} |~ "(?i)(tailscale\\.r3dlust\\.com)" |~ "(?i)a\\.b""#
     );
     assert_eq!(
-        logql(Some("lab"), Some("heimdall"), None),
+        logql(Some("lab"), Some("oracle-1/heimdall"), None),
         Err(crate::web::query::Refusal::Invalid(
-            "heimdall runs on oracle-1, not lab".into()
+            "heimdall on oracle-1 does not run on lab".into()
+        ))
+    );
+    // heimdall runs on oracle-1 alone
+    assert_eq!(
+        logql(None, Some("oracle-2/heimdall"), None),
+        Err(crate::web::query::Refusal::Missing(
+            "no service heimdall on oracle-2".into()
         ))
     );
     assert!(logql(Some("nope"), None, None).is_err());

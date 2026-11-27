@@ -159,7 +159,7 @@ fn contract() -> String {
         let (kind, name) = of.split_once(':').unwrap();
         let of = match kind {
             "machine" => Subject::Machine(name.into()),
-            _ => Subject::Service(name.into()),
+            _ => Subject::Service(ServiceId::parse(name).unwrap()),
         };
         let query = SeriesQuery {
             of,
@@ -175,8 +175,8 @@ fn contract() -> String {
         series("machine:oracle-2", Metric::Disk, None),
         series("machine:lab", Metric::Load, None),
         series("machine:lab", Metric::Net, None),
-        series("service:portfolio", Metric::Latency, None),
-        series("service:portfolio", Metric::Latency, Some("lab")),
+        series("service:oracle-2/portfolio", Metric::Latency, None),
+        series("service:oracle-2/portfolio", Metric::Latency, Some("lab")),
     ];
 
     let logs = fixture

@@ -152,7 +152,11 @@
 					<tr data-go>
 						<td><Dot s={s.unit?.state === 'active' ? 'ok' : 'idle'} /></td>
 						<td class="m nm">{s.unit?.name}</td>
-						<td><a class="ul" href={href({ screen: 'service', name: s.name })}>{s.name}</a></td>
+						<td>
+							<a class="ul" href={href({ screen: 'service', machine: s.machine, name: s.name })}>
+								{s.name}
+							</a>
+						</td>
 						<td class="n m">{s.unit?.state}</td>
 					</tr>
 				{/each}
@@ -170,7 +174,7 @@
 			</div>
 		{/each}
 		{#each services.filter((s) => s.unit?.state !== 'failed') as s (s.name)}
-			<a class="row" href={href({ screen: 'service', name: s.name })}>
+			<a class="row" href={href({ screen: 'service', machine: s.machine, name: s.name })}>
 				<Dot s={s.unit?.state === 'active' ? 'ok' : 'idle'} />
 				<div>
 					<div class="rh"><span class="nm m ell">{s.unit?.name}</span></div>

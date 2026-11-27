@@ -51,22 +51,25 @@ pub fn chart(registry: &Registry, of: &Subject, metric: Metric) -> Result<Chart,
                 by_node: false,
             })
         }
-        (Subject::Service(name), Metric::Latency) => {
+        (Subject::Service(id), Metric::Latency) => {
             let service = registry
-                .services
-                .get(name)
-                .ok_or_else(|| Refusal::Missing(format!("no service {name}")))?;
+                .service(id)
+                .ok_or_else(|| Refusal::Missing(format!("no service {id}")))?;
             if service.probes.is_empty() {
-                return Err(Refusal::Invalid(format!("{name} has no probes")));
+                return Err(Refusal::Invalid(format!("{id} has no probes")));
             }
             Ok(Chart {
                 lines: vec![("latency", Named::Latency), ("failing", Named::Failing)],
-                on: super::promql::matcher("service", &name.0),
+                on: format!(
+                    "{}, {}",
+                    super::promql::matcher("service", &id.name.0),
+                    super::promql::matcher("machine", &id.machine.0)
+                ),
                 by_node: true,
             })
         }
-        (Subject::Service(name), _) => Err(Refusal::Invalid(format!(
-            "a service has a latency only; {name} is a service"
+        (Subject::Service(id), _) => Err(Refusal::Invalid(format!(
+            "a service has a latency only; {id} is a service"
         ))),
     }
 }

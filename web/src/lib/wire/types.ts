@@ -136,6 +136,12 @@ export type FailedUnit = {
   since: Ms;
 };
 
+/** a service in the registry. two machines may each run a service of one name, so a service is its name and its machine together; services sort by name, then by machine */
+export type ServiceId = {
+  name: ServiceName;
+  machine: Hostname;
+};
+
 export type Service = {
   name: ServiceName;
   machine: Hostname;
@@ -203,7 +209,8 @@ export type Alert = {
   /** when the first node fired it */
   starts_at: Ms;
   machine: Hostname | null;
-  service: ServiceName | null;
+  /** the registry service it is about, from its `service` and `machine` labels */
+  service: ServiceId | null;
   summary: string;
   /** the nodes whose prometheus fires it, or fired it once it resolved; a node that did not answer is left out */
   seen_by: Array<Hostname>;
@@ -240,7 +247,7 @@ export type Series = {
   failing: Array<[Ms, Ms]>;
 };
 
-export type Subject = { machine: Hostname } | { service: ServiceName };
+export type Subject = { machine: Hostname } | { service: ServiceId };
 
 /** a machine's `cpu`, `mem` and `disk` are fractions, `net` is bytes per second received (`rx`) and sent (`tx`), `load` the 1-minute load average; a service's `latency` is milliseconds, the slowest of its probes */
 export type Metric = "cpu" | "mem" | "disk" | "net" | "load" | "latency";

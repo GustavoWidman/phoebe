@@ -19,8 +19,8 @@
 				to: { screen: 'machine', name: alert.machine } satisfies Route
 			},
 			(alert.labels.name || alert.service) && {
-				text: alert.labels.name ?? alert.service!,
-				to: alert.service ? ({ screen: 'service', name: alert.service } satisfies Route) : null
+				text: alert.labels.name ?? alert.service!.name,
+				to: alert.service ? ({ screen: 'service', ...alert.service } satisfies Route) : null
 			}
 		].filter((p) => !!p)
 	);

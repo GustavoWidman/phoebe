@@ -24,7 +24,7 @@
 	let { snap, service: s }: { snap: Snapshot; service: Service } = $props();
 
 	const st = $derived(serviceStatus(s, snap.nodes));
-	const alerts = $derived(alertsOn(snap, { service: s.name }));
+	const alerts = $derived(alertsOn(snap, { service: s }));
 	const probed = $derived(s.probes.length > 0);
 	// the first node that cannot reach it, else the first node
 	const first = untrack(() => serviceStatus(s, snap.nodes));
@@ -33,7 +33,7 @@
 	const minute = () => Math.floor(snap.at / 60_000);
 
 	const band = new Load(
-		() => (probed ? seriesUrl({ service: s.name }, 'latency', range) : null),
+		() => (probed ? seriesUrl({ service: s }, 'latency', range) : null),
 		parseSeries,
 		minute
 	);
@@ -41,14 +41,14 @@
 		first.reach.map((n) => [
 			n.node,
 			new Load(
-				() => (probed ? seriesUrl({ service: s.name }, 'latency', range, n.node) : null),
+				() => (probed ? seriesUrl({ service: s }, 'latency', range, n.node) : null),
 				parseSeries,
 				minute
 			)
 		])
 	);
 	const recent = new LogFeed(
-		() => (layout.desk ? null : { service: s.name }),
+		() => (layout.desk ? null : { service: s }),
 		() => false,
 		8
 	);

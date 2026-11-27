@@ -6,7 +6,7 @@ use std::{collections::BTreeMap, path::Path};
 use eyre::{Result, WrapErr, bail};
 use serde::Deserialize;
 
-use crate::web::wire::{Hostname, Os, ProbeKind, ServiceName};
+use crate::web::wire::{Hostname, Os, ProbeKind, ServiceId, ServiceName};
 
 #[derive(Clone, Debug, Deserialize)]
 pub struct Registry {
@@ -131,6 +131,12 @@ impl Registry {
 
     pub fn machine(&self, name: &Hostname) -> Option<&MachineEntry> {
         self.machines.get(name)
+    }
+
+    pub fn service(&self, id: &ServiceId) -> Option<&ServiceEntry> {
+        self.services
+            .get(&id.name)
+            .filter(|service| service.machine == id.machine)
     }
 
     /// `http://<address>:<port>` of a machine in the registry

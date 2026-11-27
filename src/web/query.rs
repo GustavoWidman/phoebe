@@ -7,7 +7,7 @@ use axum::{
 };
 use serde::{Deserialize, Deserializer, de::Error};
 
-use super::wire::{Hostname, Metric, ServiceName, Subject};
+use super::wire::{Hostname, Metric, ServiceId, Subject};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Deserialize)]
 pub enum Range {
@@ -33,7 +33,7 @@ impl Range {
     }
 }
 
-/// `GET /api/series?of=machine:<name>|service:<name>&metric=&range=[&node=]`
+/// `GET /api/series?of=machine:<name>|service:<machine>/<name>&metric=&range=[&node=]`
 #[derive(Clone, Debug, PartialEq, Deserialize)]
 pub struct SeriesQuery {
     #[serde(deserialize_with = "subject")]
@@ -49,11 +49,24 @@ fn subject<'de, D: Deserializer<'de>>(deserializer: D) -> Result<Subject, D::Err
     let of = String::deserialize(deserializer)?;
     match of.split_once(':') {
         Some(("machine", name)) => Ok(Subject::Machine(Hostname::from(name))),
-        Some(("service", name)) => Ok(Subject::Service(ServiceName::from(name))),
+        Some(("service", path)) => ServiceId::parse(path).map(Subject::Service).ok_or_else(|| {
+            D::Error::custom(format!(
+                "`of` names a service as service:<machine>/<name>, not {of}"
+            ))
+        }),
         _ => Err(D::Error::custom(format!(
-            "`of` is machine:<name> or service:<name>, not {of}"
+            "`of` is machine:<name> or service:<machine>/<name>, not {of}"
         ))),
     }
+}
+
+fn service<'de, D: Deserializer<'de>>(deserializer: D) -> Result<Option<ServiceId>, D::Error> {
+    let Some(path) = Option::<String>::deserialize(deserializer)? else {
+        return Ok(None);
+    };
+    ServiceId::parse(&path)
+        .map(Some)
+        .ok_or_else(|| D::Error::custom(format!("`service` is <machine>/<name>, not {path}")))
 }
 
 /// which lines `GET /api/logs` and `GET /api/logs/tail` answer with; every
@@ -63,9 +76,10 @@ pub struct LogQuery {
     pub machine: Option<Hostname>,
     /// lines its unit wrote, or that name it
     pub unit: Option<String>,
-    /// lines its unit wrote on its machine; for a service with no unit,
-    /// lines that name one of its probes' hosts
-    pub service: Option<ServiceName>,
+    /// `<machine>/<name>`: lines its unit wrote on its machine; for a
+    /// service with no unit, lines that name one of its probes' hosts
+    #[serde(default, deserialize_with = "service")]
+    pub service: Option<ServiceId>,
     /// found in a line's text or unit, ignoring case
     pub q: Option<String>,
 }

@@ -12,7 +12,12 @@
 	const unitFailed = $derived(s.unit?.state === 'failed');
 </script>
 
-<a class="row" href={href({ screen: 'service', name: s.name })} data-service={s.name}>
+<a
+	class="row"
+	href={href({ screen: 'service', machine: s.machine, name: s.name })}
+	data-service={s.name}
+	data-machine={s.machine}
+>
 	<Dot s={st.dot} />
 	<div>
 		<div class="rh"><span class="nm m ell">{s.name}</span></div>

@@ -5,7 +5,7 @@
 -->
 <script lang="ts">
 	import { untrack } from 'svelte';
-	import { seriesUrl, Load } from '#lib/api.svelte.ts';
+	import { seriesUrl, servicePath, Load } from '#lib/api.svelte.ts';
 	import Band from '#lib/alert/Band.svelte';
 	import AlertRow from '#lib/alert/AlertRow.svelte';
 	import { date, hm, latency, load, pct, dur } from '#lib/derive/format.ts';
@@ -20,7 +20,7 @@
 		resolvedOf,
 		serviceStatus
 	} from '#lib/derive/status.ts';
-	import { href, router } from '#lib/router.svelte.ts';
+	import { href, router, type Route } from '#lib/router.svelte.ts';
 	import MachineRow from '#lib/rows/MachineRow.svelte';
 	import ServiceRow from '#lib/rows/ServiceRow.svelte';
 	import Dot from '#lib/ui/Dot.svelte';
@@ -38,7 +38,7 @@
 	const resolved = $derived(resolvedOf(snap));
 	const machines = $derived(byPresence(snap.machines));
 	const statuses = $derived(
-		new Map(snap.services.map((s) => [s.name, serviceStatus(s, snap.nodes)]))
+		new Map(snap.services.map((s) => [servicePath(s), serviceStatus(s, snap.nodes)]))
 	);
 	const minute = () => Math.floor(snap.at / 60_000);
 
@@ -58,9 +58,9 @@
 	for (const s of registry.services)
 		if (s.probes.length)
 			lat.set(
-				s.name,
+				servicePath(s),
 				new Load(
-					() => (layout.desk ? seriesUrl({ service: s.name }, 'latency', '6h') : null),
+					() => (layout.desk ? seriesUrl({ service: s }, 'latency', '6h') : null),
 					parseSeries,
 					minute
 				)
@@ -161,15 +161,12 @@
 			</tr>
 		</thead>
 		<tbody>
-			{#each snap.services as s (s.name)}
-				{@const st = statuses.get(s.name)!}
-				<tr
-					data-go
-					data-service={s.name}
-					onclick={() => router.go({ screen: 'service', name: s.name })}
-				>
+			{#each snap.services as s (servicePath(s))}
+				{@const st = statuses.get(servicePath(s))!}
+				{@const to = { screen: 'service', machine: s.machine, name: s.name } satisfies Route}
+				<tr data-go data-service={s.name} data-machine={s.machine} onclick={() => router.go(to)}>
 					<td><Dot s={st.dot} /></td>
-					<td class="m nm"><a href={href({ screen: 'service', name: s.name })}>{s.name}</a></td>
+					<td class="m nm"><a href={href(to)}>{s.name}</a></td>
 					<td class:bad={s.unit?.state === 'failed'}>
 						{s.unit ? `${s.unit.name.replace(/\.service$/, '')} · ${s.machine}` : s.machine}
 					</td>
@@ -180,7 +177,7 @@
 					{/each}
 					<td class="n" class:warn={st.dot === 'warn'} class:bad={st.dot === 'bad'}>
 						{#if st.reached}<Spark
-								points={medianPoints(lat.get(s.name)?.value)}
+								points={medianPoints(lat.get(servicePath(s))?.value)}
 								w={64}
 								h={16}
 							/>{:else}{checkWord(s)}{/if}
@@ -190,9 +187,9 @@
 		</tbody>
 	</table>
 {:else}
-	{#each snap.services as s (s.name)}<ServiceRow
+	{#each snap.services as s (servicePath(s))}<ServiceRow
 			service={s}
-			status={statuses.get(s.name)!}
+			status={statuses.get(servicePath(s))!}
 		/>{/each}
 {/if}
 

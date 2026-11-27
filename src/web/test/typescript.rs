@@ -52,6 +52,7 @@ pub fn typescript() -> String {
         (Vitals::docs(), Vitals::decl(&config)),
         (Units::docs(), Units::decl(&config)),
         (FailedUnit::docs(), FailedUnit::decl(&config)),
+        (ServiceId::docs(), ServiceId::decl(&config)),
         (Service::docs(), Service::decl(&config)),
         (UnitStatus::docs(), UnitStatus::decl(&config)),
         (UnitState::docs(), UnitState::decl(&config)),
