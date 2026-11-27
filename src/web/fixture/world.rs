@@ -44,7 +44,13 @@ pub fn snapshot(at: i64) -> Snapshot {
             })
             .collect(),
         machines: MACHINES.iter().map(|spec| machine(spec, at)).collect(),
-        services: SERVICES.iter().map(|spec| service(spec, at)).collect(),
+        // by name, then by machine, as a node's registry lists them
+        services: {
+            let mut services: Vec<Service> =
+                SERVICES.iter().map(|spec| service(spec, at)).collect();
+            services.sort_by(|a, b| (&a.name, &a.machine).cmp(&(&b.name, &b.machine)));
+            services
+        },
         alerts: firing
             .into_iter()
             .chain(resolved)

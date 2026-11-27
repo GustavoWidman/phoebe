@@ -121,7 +121,7 @@ fn other() -> Other {
             (HeartbeatState::Unknown, None),
         ]
         .map(|(state, healthy_at)| Heartbeat {
-            metric: "dns_sync_healthy_timestamp_seconds".into(),
+            metric: "norn_healthy_timestamp_seconds".into(),
             within_ms: 3_600_000,
             state,
             healthy_at,

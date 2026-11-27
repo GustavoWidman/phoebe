@@ -332,6 +332,50 @@
         },
         {
           "name": "derp",
+          "machine": "oracle-1",
+          "unit": {
+            "name": "tailscale-derper.service",
+            "state": "active",
+            "since": 1793630520000
+          },
+          "probes": [
+            {
+              "kind": "http",
+              "target": "https://derp-1.r3dlust.com",
+              "tls": true,
+              "cert_expires_at": 1798812876763,
+              "views": [
+                {
+                  "node": "altar",
+                  "ok": true,
+                  "latency_ms": 26.11,
+                  "since": 1794674520000
+                },
+                {
+                  "node": "lab",
+                  "ok": true,
+                  "latency_ms": 27.69,
+                  "since": 1795045320000
+                },
+                {
+                  "node": "oracle-1",
+                  "ok": true,
+                  "latency_ms": 1.01,
+                  "since": 1793630520000
+                },
+                {
+                  "node": "oracle-2",
+                  "ok": true,
+                  "latency_ms": 1.83,
+                  "since": 1793630520000
+                }
+              ]
+            }
+          ],
+          "heartbeat": null
+        },
+        {
+          "name": "derp",
           "machine": "oracle-2",
           "unit": {
             "name": "tailscale-derper.service",
@@ -373,18 +417,6 @@
             }
           ],
           "heartbeat": null
-        },
-        {
-          "name": "dns-sync",
-          "machine": "oracle-1",
-          "unit": null,
-          "probes": [],
-          "heartbeat": {
-            "metric": "dns_sync_healthy_timestamp_seconds",
-            "within_ms": 3600000,
-            "state": "fresh",
-            "healthy_at": 1795632000000
-          }
         },
         {
           "name": "heimdall",
@@ -680,6 +712,30 @@
             }
           ],
           "heartbeat": null
+        },
+        {
+          "name": "norn",
+          "machine": "oracle-1",
+          "unit": null,
+          "probes": [],
+          "heartbeat": {
+            "metric": "norn_healthy_timestamp_seconds",
+            "within_ms": 3600000,
+            "state": "fresh",
+            "healthy_at": 1795632000000
+          }
+        },
+        {
+          "name": "norn",
+          "machine": "oracle-2",
+          "unit": null,
+          "probes": [],
+          "heartbeat": {
+            "metric": "norn_healthy_timestamp_seconds",
+            "within_ms": 3600000,
+            "state": "fresh",
+            "healthy_at": 1795632000000
+          }
         },
         {
           "name": "portfolio",
@@ -1694,19 +1750,19 @@
     ],
     "heartbeats": [
       {
-        "metric": "dns_sync_healthy_timestamp_seconds",
+        "metric": "norn_healthy_timestamp_seconds",
         "within_ms": 3600000,
         "state": "late",
         "healthy_at": 1795626720000
       },
       {
-        "metric": "dns_sync_healthy_timestamp_seconds",
+        "metric": "norn_healthy_timestamp_seconds",
         "within_ms": 3600000,
         "state": "missing",
         "healthy_at": null
       },
       {
-        "metric": "dns_sync_healthy_timestamp_seconds",
+        "metric": "norn_healthy_timestamp_seconds",
         "within_ms": 3600000,
         "state": "unknown",
         "healthy_at": null
