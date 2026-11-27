@@ -164,7 +164,7 @@
 			{#each snap.services as s (servicePath(s))}
 				{@const st = statuses.get(servicePath(s))!}
 				{@const to = { screen: 'service', machine: s.machine, name: s.name } satisfies Route}
-				<tr data-go data-service={s.name} data-machine={s.machine} onclick={() => router.go(to)}>
+				<tr data-go data-service={servicePath(s)} onclick={() => router.go(to)}>
 					<td><Dot s={st.dot} /></td>
 					<td class="m nm"><a href={href(to)}>{s.name}</a></td>
 					<td class:bad={s.unit?.state === 'failed'}>
