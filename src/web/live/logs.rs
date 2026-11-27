@@ -31,18 +31,14 @@ pub fn logql(registry: &Registry, query: &LogQuery) -> Result<String, Refusal> {
     };
     let mut unit = query.unit.clone();
     let mut hosts: Vec<String> = Vec::new();
-    if let Some(name) = &query.service {
+    if let Some(id) = &query.service {
         let service = registry
-            .services
-            .get(name)
-            .ok_or_else(|| Refusal::Missing(format!("no service {name}")))?;
+            .service(id)
+            .ok_or_else(|| Refusal::Missing(format!("no service {id}")))?;
         if let Some((machine, _)) = machine
-            && *machine != service.machine
+            && *machine != id.machine
         {
-            return Err(Refusal::Invalid(format!(
-                "{name} runs on {}, not {machine}",
-                service.machine
-            )));
+            return Err(Refusal::Invalid(format!("{id} does not run on {machine}")));
         }
         match &service.unit {
             Some(_) if query.unit.is_some() => {
@@ -52,9 +48,9 @@ pub fn logql(registry: &Registry, query: &LogQuery) -> Result<String, Refusal> {
             }
             Some(own) => {
                 let entry = registry
-                    .machine(&service.machine)
+                    .machine(&id.machine)
                     .expect("a registry's services run on its machines");
-                machine = Some((&service.machine, entry.os));
+                machine = Some((&id.machine, entry.os));
                 unit = Some(own.clone());
             }
             None => {

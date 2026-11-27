@@ -73,17 +73,17 @@ const STATES: State[] = [
 	{ name: 'fleet-clear', t: CLEAR, path: () => '/' },
 	{ name: 'machine', t: FIRING, path: () => '/machines/oracle-1' },
 	{ name: 'machine-resting', t: FIRING, path: () => '/machines/laptop-mac' },
-	{ name: 'service', t: FIRING, path: () => '/services/portfolio' },
+	{ name: 'service', t: FIRING, path: () => '/machines/oracle-2/services/portfolio' },
 	{
 		name: 'service-tap',
 		t: FIRING,
-		path: () => '/services/portfolio',
+		path: () => '/machines/oracle-2/services/portfolio',
 		act: async (page) => {
 			await page.locator('.map g[data-node="oracle-2"]').click();
 			await settle(page);
 		}
 	},
-	{ name: 'service-clear', t: CLEAR, path: () => '/services/portfolio' },
+	{ name: 'service-clear', t: CLEAR, path: () => '/machines/oracle-2/services/portfolio' },
 	{ name: 'alert-page', t: FIRING, path: (a) => `/alerts/${a.UnitFailed}` },
 	{ name: 'alert-info', t: FIRING, path: (a) => `/alerts/${a.CertExpiring}` },
 	{ name: 'alert-resolved', t: FIRING, path: (a) => `/alerts/${a.DiskAlmostFull}` },

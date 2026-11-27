@@ -10,6 +10,7 @@
 		machineDot,
 		serviceStatus
 	} from '#lib/derive/status.ts';
+	import { servicePath } from '#lib/api.svelte.ts';
 	import { href, type Route } from '#lib/router.svelte.ts';
 	import Dot from '#lib/ui/Dot.svelte';
 	import Icon from '#lib/ui/Icon.svelte';
@@ -20,9 +21,17 @@
 
 	let { route, snap }: { route: Route; snap: Snapshot } = $props();
 	const firing = $derived(firingOf(snap));
+	/** whether the screen is the one shown, the one of `key` where it names one */
 	const is = (screen: Route['screen'], key?: string) =>
-		route.screen === screen &&
-		(key === undefined || ('name' in route ? route.name : 'id' in route ? route.id : '') === key);
+		route.screen === screen && (key === undefined || keyOf(route) === key);
+	const keyOf = (route: Route) =>
+		route.screen === 'service'
+			? servicePath(route)
+			: 'name' in route
+				? route.name
+				: 'id' in route
+					? route.id
+					: '';
 </script>
 
 <div class="side-h"><span class="wm"><Icon name="moon" />phoebe</span><Account /></div>
@@ -63,9 +72,13 @@
 	</a>
 {/each}
 <Label label="Services" />
-{#each snap.services as s (s.name)}
+{#each snap.services as s (servicePath(s))}
 	{@const st = serviceStatus(s, snap.nodes)}
-	<a class="si" class:on={is('service', s.name)} href={href({ screen: 'service', name: s.name })}>
+	<a
+		class="si"
+		class:on={is('service', servicePath(s))}
+		href={href({ screen: 'service', machine: s.machine, name: s.name })}
+	>
 		<Dot s={st.dot} /><span class="ell m">{s.name}</span>
 		{#if st.reached}
 			<Pips dots={st.reach.map((r) => (r.ok === false ? 'bad' : r.ok ? 'ok' : 'idle'))} />

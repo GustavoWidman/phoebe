@@ -24,6 +24,7 @@ import type {
 	Series,
 	SeriesData,
 	Service,
+	ServiceId,
 	ServiceName,
 	Hostname,
 	SignedIn,
@@ -175,6 +176,8 @@ const svc = obj<Service>({
 	)
 });
 
+const serviceId = obj<ServiceId>({ name: service, machine: host });
+
 const alert = obj<Alert>({
 	id: alertId,
 	rule: str,
@@ -182,7 +185,7 @@ const alert = obj<Alert>({
 	state: tagged<Alert['state']>({ firing: none, resolved: obj({ at: ms }) }),
 	starts_at: ms,
 	machine: nullable(host),
-	service: nullable(service),
+	service: nullable(serviceId),
 	summary: str,
 	seen_by: list(host),
 	labels: strings
@@ -208,7 +211,7 @@ const subject: Parser<Subject> = (v, at) => {
 	const r = record(v, at);
 	return 'machine' in r
 		? { machine: host(r.machine, `${at}.machine`) }
-		: { service: service(r.service, `${at}.service`) };
+		: { service: serviceId(r.service, `${at}.service`) };
 };
 
 const seriesData = tagged<SeriesData>({

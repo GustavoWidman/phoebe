@@ -33,7 +33,10 @@ export function context(route: Route, snap: Snapshot | null): Context {
 		case 'service':
 			return {
 				title: route.name,
-				logs: { filter: { service: route.name }, say: route.name },
+				logs: {
+					filter: { service: { machine: route.machine, name: route.name } },
+					say: `${route.name} on ${route.machine}`
+				},
 				sev: null,
 				leave: 'back'
 			};

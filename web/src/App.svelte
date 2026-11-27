@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { onMount, type Component } from 'svelte';
+	import { servicePath } from '#lib/api.svelte.ts';
 	import { router, type Route } from '#lib/router.svelte.ts';
 	import Missing from '#lib/screens/Missing.svelte';
 	import Frame from '#lib/shell/Frame.svelte';
@@ -57,10 +58,10 @@
 						name={route.name}
 					/>{/if}
 			{:else if route.screen === 'service' && screens.service}
-				{@const s = fleet.services.get(route.name)}
+				{@const s = fleet.services.get(servicePath(route))}
 				{#if s}<screens.service {snap} service={s} />{:else}<Missing
 						what="service"
-						name={route.name}
+						name="{route.name} on {route.machine}"
 					/>{/if}
 			{:else if route.screen === 'alert' && screens.alert}
 				<screens.alert {snap} id={route.id} />

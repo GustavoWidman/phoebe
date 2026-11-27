@@ -60,7 +60,7 @@
 		};
 	const series = $derived(detail.value?.series ?? null);
 	const subject = $derived(
-		series ? ('machine' in series.of ? series.of.machine : series.of.service) : ''
+		series ? ('machine' in series.of ? series.of.machine : series.of.service.name) : ''
 	);
 </script>
 

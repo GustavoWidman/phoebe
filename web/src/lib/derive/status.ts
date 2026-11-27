@@ -10,6 +10,7 @@ import type {
 	Ms,
 	Node,
 	Service,
+	ServiceId,
 	Severity,
 	Snapshot
 } from '#lib/wire/types.ts';
@@ -45,9 +46,9 @@ export const hostOf = (target: string) =>
  * item. One line per rule the modules define; a rule this table does not know shows its name.
  */
 const TITLES: Record<string, (a: Alert) => string | null> = {
-	UnitFailed: (a) => `${a.labels.name ?? a.service ?? 'a unit'} failed`,
+	UnitFailed: (a) => `${a.labels.name ?? a.service?.name ?? 'a unit'} failed`,
 	MachineDown: (a) => a.machine && `${a.machine} is down`,
-	ServiceUnreachable: (a) => a.service && `${a.service} unreachable`,
+	ServiceUnreachable: (a) => a.service && `${a.service.name} unreachable`,
 	CertExpiring: (a) => a.labels.target && `${hostOf(a.labels.target)} certificate expiring`,
 	DiskAlmostFull: (a) =>
 		a.machine && `${a.labels.mountpoint ?? 'disk'} almost full on ${a.machine}`,
@@ -55,7 +56,7 @@ const TITLES: Record<string, (a: Alert) => string | null> = {
 		a.machine && `${a.labels.mountpoint ?? 'disk'} filling fast on ${a.machine}`,
 	NodeUnhealthy: (a) => a.machine && `${a.labels.job ?? 'a store'} unhealthy on ${a.machine}`,
 	LogsBacklog: (a) => a.machine && `logs backing up on ${a.machine}`,
-	ServiceStale: (a) => a.service && `${a.service} stale`
+	ServiceStale: (a) => a.service && `${a.service.name} stale`
 };
 
 export const alertTitle = (a: Alert) => TITLES[a.rule]?.(a) || a.rule;
@@ -232,6 +233,12 @@ export function presence(m: Machine, now: Ms): string | null {
 export const firingOf = (snap: Snapshot) => snap.alerts.filter(isFiring);
 export const resolvedOf = (snap: Snapshot) => snap.alerts.filter((a) => !isFiring(a));
 
+/** whether two names of services name the same one: the same name on the same machine */
+export const sameService = (a: ServiceId, b: ServiceId) =>
+	a.machine === b.machine && a.name === b.name;
+
 /** the firing alerts about a machine, or about a service */
-export const alertsOn = (snap: Snapshot, on: { machine?: Hostname; service?: string }) =>
-	firingOf(snap).filter((a) => (on.service ? a.service === on.service : a.machine === on.machine));
+export const alertsOn = (snap: Snapshot, on: { machine?: Hostname; service?: ServiceId }) =>
+	firingOf(snap).filter((a) =>
+		on.service ? !!a.service && sameService(a.service, on.service) : a.machine === on.machine
+	);

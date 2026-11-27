@@ -5,7 +5,7 @@
       "https://oracle-1.tail4a3ea.ts.net:45731"
     ],
     "build": "4f2a9c1e07b3",
-    "schema": 1
+    "schema": 2
   },
   "signin": {
     "key": {
@@ -35,7 +35,7 @@
   "stream": [
     {
       "kind": "snapshot",
-      "schema": 1,
+      "schema": 2,
       "at": 1795632120000,
       "served_by": "lab",
       "nodes": [
@@ -1022,7 +1022,10 @@
           },
           "starts_at": 1795629570000,
           "machine": "oracle-1",
-          "service": "lavalink",
+          "service": {
+            "name": "lavalink",
+            "machine": "oracle-1"
+          },
           "summary": "lavalink failed on oracle-1",
           "seen_by": [
             "altar",
@@ -1050,7 +1053,10 @@
           },
           "starts_at": 1795198200000,
           "machine": "oracle-2",
-          "service": "derp",
+          "service": {
+            "name": "derp",
+            "machine": "oracle-2"
+          },
           "summary": "the certificate of https://derp.r3dlust.com expires in 8d 23h 18m 0s",
           "seen_by": [
             "altar",
@@ -1276,7 +1282,10 @@
     },
     {
       "of": {
-        "service": "portfolio"
+        "service": {
+          "name": "portfolio",
+          "machine": "oracle-2"
+        }
       },
       "metric": "latency",
       "from": 1795628520000,
@@ -1313,7 +1322,10 @@
     },
     {
       "of": {
-        "service": "portfolio"
+        "service": {
+          "name": "portfolio",
+          "machine": "oracle-2"
+        }
       },
       "metric": "latency",
       "from": 1795628520000,
@@ -1429,7 +1441,10 @@
       },
       "starts_at": 1795629570000,
       "machine": "oracle-1",
-      "service": "lavalink",
+      "service": {
+        "name": "lavalink",
+        "machine": "oracle-1"
+      },
       "summary": "lavalink failed on oracle-1",
       "seen_by": [
         "altar",
@@ -1486,7 +1501,10 @@
       },
       "starts_at": 1795198200000,
       "machine": "oracle-2",
-      "service": "derp",
+      "service": {
+        "name": "derp",
+        "machine": "oracle-2"
+      },
       "summary": "the certificate of https://derp.r3dlust.com expires in 8d 23h 18m 0s",
       "seen_by": [
         "altar",

@@ -48,7 +48,7 @@ test('the machine charts its metrics over the range chosen', async ({ page, flee
 });
 
 test('tapping a node on the probe map shows its latency', async ({ page, fleet: _ }) => {
-	await page.goto('/services/portfolio');
+	await page.goto('/machines/oracle-2/services/portfolio');
 	// the node that cannot reach it comes selected
 	await expect(page.locator('.lbl', { hasText: 'Latency from lab' })).toContainText(
 		'timeout since'

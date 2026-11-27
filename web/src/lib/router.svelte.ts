@@ -5,7 +5,8 @@
 export type Route =
 	| { screen: 'fleet' }
 	| { screen: 'machine'; name: string }
-	| { screen: 'service'; name: string }
+	/** a service is its machine and its name, so it lives under its machine */
+	| { screen: 'service'; machine: string; name: string }
 	| { screen: 'alert'; id: string }
 	| { screen: 'logs' }
 	/** this device: its theme, its session and its notifications */
@@ -16,7 +17,10 @@ export type Route =
 const routes: [RegExp, (...params: string[]) => Route][] = [
 	[/^\/$/, () => ({ screen: 'fleet' })],
 	[/^\/machines\/([^/]+)$/, (name) => ({ screen: 'machine', name })],
-	[/^\/services\/([^/]+)$/, (name) => ({ screen: 'service', name })],
+	[
+		/^\/machines\/([^/]+)\/services\/([^/]+)$/,
+		(machine, name) => ({ screen: 'service', machine, name })
+	],
 	[/^\/alerts\/([^/]+)$/, (id) => ({ screen: 'alert', id })],
 	[/^\/logs$/, () => ({ screen: 'logs' })],
 	[/^\/device$/, () => ({ screen: 'device' })],
@@ -45,7 +49,7 @@ export function href(route: Route): string {
 		case 'machine':
 			return `/machines/${e(route.name)}`;
 		case 'service':
-			return `/services/${e(route.name)}`;
+			return `/machines/${e(route.machine)}/services/${e(route.name)}`;
 		case 'alert':
 			return `/alerts/${e(route.id)}`;
 		case 'logs':

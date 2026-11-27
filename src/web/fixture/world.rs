@@ -212,7 +212,10 @@ fn alert(incident: &Incident, at: i64) -> Alert {
         },
         starts_at: Ms(incident.starts_at()),
         machine: incident.machine.map(Hostname::from),
-        service: incident.service.map(ServiceName::from),
+        service: incident
+            .service
+            .zip(incident.machine)
+            .map(|(name, machine)| ServiceId::new(machine, name)),
         summary: (incident.summary)(evaluated),
         seen_by,
         labels,
@@ -291,9 +294,10 @@ pub fn alert_detail(id: &AlertId, at: i64) -> Result<AlertDetail, Refusal> {
 
     let series = incident.chart.map(|metric| {
         let of = match metric {
-            Metric::Latency => {
-                Subject::Service(ServiceName::from(incident.service.unwrap_or_default()))
-            }
+            Metric::Latency => Subject::Service(ServiceId::new(
+                incident.machine.unwrap_or_default(),
+                incident.service.unwrap_or_default(),
+            )),
             _ => Subject::Machine(Hostname::from(incident.machine.unwrap_or_default())),
         };
         let to = incident
@@ -392,11 +396,11 @@ fn series(
                     .collect(),
             }
         }
-        (Subject::Service(name), Metric::Latency) => {
-            let spec = fleet::service(&name.0)
-                .ok_or_else(|| Refusal::Missing(format!("no service {name}")))?;
+        (Subject::Service(id), Metric::Latency) => {
+            let spec =
+                fleet::service(id).ok_or_else(|| Refusal::Missing(format!("no service {id}")))?;
             if spec.probes.is_empty() {
-                return Err(Refusal::Invalid(format!("{name} has no probes")));
+                return Err(Refusal::Invalid(format!("{id} has no probes")));
             }
             let probing: Vec<&str> = match node {
                 Some(node) => vec![
@@ -430,9 +434,9 @@ fn series(
                 },
             }
         }
-        (Subject::Service(name), _) => {
+        (Subject::Service(id), _) => {
             return Err(Refusal::Invalid(format!(
-                "a service has a latency only; {name} is a service"
+                "a service has a latency only; {id} is a service"
             )));
         }
     };

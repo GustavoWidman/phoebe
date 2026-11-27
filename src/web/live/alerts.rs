@@ -11,7 +11,7 @@ use super::{
     prometheus::{Labels, Range, RuleAlert, RuleState, Sample},
 };
 use crate::web::wire::{
-    Alert, AlertId, AlertState, Hostname, Ms, ServiceName, Severity, TimelineEntry,
+    Alert, AlertId, AlertState, Hostname, Ms, ServiceId, Severity, TimelineEntry,
 };
 
 /// how often every node evaluates its rules
@@ -250,7 +250,9 @@ fn make(
         state,
         starts_at,
         machine: label("machine").map(Hostname::from),
-        service: label("service").map(ServiceName::from),
+        service: label("service")
+            .zip(label("machine"))
+            .map(|(name, machine)| ServiceId::new(machine, name)),
         summary,
         seen_by,
         labels: labels.clone(),
@@ -262,7 +264,8 @@ fn make(
 fn fallback_summary(labels: &Labels) -> String {
     let rule = labels.get("alertname").map_or("an alert", String::as_str);
     match (labels.get("service"), labels.get("machine")) {
-        (Some(service), _) => format!("{rule} for {service}"),
+        (Some(service), Some(machine)) => format!("{rule} for {service} on {machine}"),
+        (Some(service), None) => format!("{rule} for {service}"),
         (None, Some(machine)) => format!("{rule} on {machine}"),
         (None, None) => rule.to_owned(),
     }

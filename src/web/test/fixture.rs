@@ -157,7 +157,7 @@ async fn everything(router: &axum::Router) -> Vec<Value> {
         .await,
         json(
             router,
-            "/api/series?of=service:mail&metric=latency&range=24h",
+            "/api/series?of=service:oracle-2/mail&metric=latency&range=24h",
         )
         .await,
         json(router, "/api/logs?machine=lab&limit=200").await,
@@ -242,12 +242,12 @@ async fn a_latency_band_leaves_out_the_node_that_cannot_reach() {
     let router = simulated();
     let from_lab = json(
         &router,
-        "/api/series?of=service:portfolio&metric=latency&range=1h&node=lab",
+        "/api/series?of=service:oracle-2/portfolio&metric=latency&range=1h&node=lab",
     )
     .await;
     let band = json(
         &router,
-        "/api/series?of=service:portfolio&metric=latency&range=1h",
+        "/api/series?of=service:oracle-2/portfolio&metric=latency&range=1h",
     )
     .await;
     let lost = brt(15, 21, 2);
@@ -274,16 +274,25 @@ async fn a_series_that_cannot_exist_is_refused() {
             StatusCode::BAD_REQUEST,
         ),
         (
-            "/api/series?of=service:mail&metric=cpu&range=1h",
+            "/api/series?of=service:oracle-2/mail&metric=cpu&range=1h",
             StatusCode::BAD_REQUEST,
         ),
         (
-            "/api/series?of=service:lavalink&metric=latency&range=1h",
+            "/api/series?of=service:oracle-1/lavalink&metric=latency&range=1h",
             StatusCode::BAD_REQUEST,
         ),
         (
             "/api/series?of=lab&metric=cpu&range=1h",
             StatusCode::BAD_REQUEST,
+        ),
+        // a service is its machine and its name
+        (
+            "/api/series?of=service:mail&metric=latency&range=1h",
+            StatusCode::BAD_REQUEST,
+        ),
+        (
+            "/api/series?of=service:lab/mail&metric=latency&range=1h",
+            StatusCode::NOT_FOUND,
         ),
         (
             "/api/series?of=machine:lab&metric=cpu",
@@ -294,7 +303,7 @@ async fn a_series_that_cannot_exist_is_refused() {
             StatusCode::NOT_FOUND,
         ),
         (
-            "/api/series?of=service:mail&metric=latency&range=1h&node=laptop-mac",
+            "/api/series?of=service:oracle-2/mail&metric=latency&range=1h&node=laptop-mac",
             StatusCode::NOT_FOUND,
         ),
     ] {
@@ -346,7 +355,7 @@ async fn logs_narrow_to_what_is_asked() {
     }
 
     // systemd's lines about the unit count as the unit's
-    let lavalink = json(&router, "/api/logs?service=lavalink&limit=1000").await;
+    let lavalink = json(&router, "/api/logs?service=oracle-1/lavalink&limit=1000").await;
     let units: std::collections::BTreeSet<&str> = lavalink["lines"]
         .as_array()
         .unwrap()
@@ -358,7 +367,7 @@ async fn logs_narrow_to_what_is_asked() {
     // a service with no unit is the lines that name its hosts
     let portfolio = json(
         &router,
-        "/api/logs?service=portfolio&machine=oracle-2&limit=5",
+        "/api/logs?service=oracle-2/portfolio&machine=oracle-2&limit=5",
     )
     .await;
     for line in portfolio["lines"].as_array().unwrap() {
@@ -373,14 +382,27 @@ async fn logs_narrow_to_what_is_asked() {
         StatusCode::NOT_FOUND
     );
     assert_eq!(
-        get(&router, "/api/logs?service=mail&unit=postfix.service")
+        get(
+            &router,
+            "/api/logs?service=oracle-2/mail&unit=postfix.service"
+        )
+        .await
+        .0,
+        StatusCode::BAD_REQUEST
+    );
+    assert_eq!(
+        get(&router, "/api/logs?service=oracle-2/mail&machine=lab")
             .await
             .0,
         StatusCode::BAD_REQUEST
     );
     assert_eq!(
-        get(&router, "/api/logs?service=mail&machine=lab").await.0,
+        get(&router, "/api/logs?service=mail").await.0,
         StatusCode::BAD_REQUEST
+    );
+    assert_eq!(
+        get(&router, "/api/logs?service=lab/mail").await.0,
+        StatusCode::NOT_FOUND
     );
 }
 
@@ -484,6 +506,6 @@ async fn an_alert_shows_its_timeline_and_its_series() {
 async fn hello_answers_and_unknown_routes_do_not() {
     let router = simulated();
     let hello = json(&router, "/api/hello").await;
-    assert_eq!(hello["schema"], 1);
+    assert_eq!(hello["schema"], 2);
     assert_eq!(get(&router, "/api/nothing").await.0, StatusCode::NOT_FOUND);
 }

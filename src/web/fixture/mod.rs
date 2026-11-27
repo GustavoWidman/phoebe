@@ -357,15 +357,11 @@ fn filter(query: &LogQuery) -> Result<Filter, Refusal> {
         hosts: Vec::new(),
         q: query.q.as_ref().map(|q| q.to_lowercase()),
     };
-    if let Some(name) = &query.service {
-        let service = fleet::service(&name.0)
-            .ok_or_else(|| Refusal::Missing(format!("no service {name}")))?;
-        if machine.is_some_and(|machine| machine != service.machine) {
-            return Err(Refusal::Invalid(format!(
-                "{name} runs on {}, not {}",
-                service.machine,
-                machine.unwrap_or_default()
-            )));
+    if let Some(id) = &query.service {
+        let service =
+            fleet::service(id).ok_or_else(|| Refusal::Missing(format!("no service {id}")))?;
+        if let Some(machine) = machine.filter(|machine| *machine != service.machine) {
+            return Err(Refusal::Invalid(format!("{id} does not run on {machine}")));
         }
         match service.unit {
             Some(_) if query.unit.is_some() => {

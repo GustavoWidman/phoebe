@@ -9,7 +9,7 @@ use serde::{Deserialize, Serialize};
 
 /// the version of these shapes; raised only when a change would break a
 /// browser still running the previous build
-pub const SCHEMA: u16 = 1;
+pub const SCHEMA: u16 = 2;
 
 /// epoch milliseconds
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
@@ -48,13 +48,45 @@ name!(
     Hostname
 );
 name!(
-    /// a service's name in the registry, unique across the fleet
+    /// a service's name in the registry, unique on its machine
     ServiceName
 );
 name!(
     /// an alert's alertmanager fingerprint, 16 hex digits
     AlertId
 );
+
+/// a service in the registry. two machines may each run a service of one
+/// name, so a service is its name and its machine together; services sort
+/// by name, then by machine
+#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize)]
+#[cfg_attr(test, derive(ts_rs::TS))]
+pub struct ServiceId {
+    pub name: ServiceName,
+    pub machine: Hostname,
+}
+
+impl ServiceId {
+    pub fn new(machine: &str, name: &str) -> Self {
+        Self {
+            name: ServiceName::from(name),
+            machine: Hostname::from(machine),
+        }
+    }
+
+    /// `<machine>/<name>`, as a browser names a service: a machine's name
+    /// holds no `/`, so the first one ends it
+    pub fn parse(path: &str) -> Option<Self> {
+        let (machine, name) = path.split_once('/')?;
+        (!machine.is_empty() && !name.is_empty()).then(|| Self::new(machine, name))
+    }
+}
+
+impl std::fmt::Display for ServiceId {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{} on {}", self.name, self.machine)
+    }
+}
 
 /// `GET /api/hello`, the one route that answers before signing in, and it
 /// carries no fleet data
@@ -354,7 +386,9 @@ pub struct Alert {
     /// when the first node fired it
     pub starts_at: Ms,
     pub machine: Option<Hostname>,
-    pub service: Option<ServiceName>,
+    /// the registry service it is about, from its `service` and `machine`
+    /// labels
+    pub service: Option<ServiceId>,
     pub summary: String,
     /// the nodes whose prometheus fires it, or fired it once it resolved;
     /// a node that did not answer is left out
@@ -439,7 +473,7 @@ pub struct Series {
 #[serde(rename_all = "snake_case")]
 pub enum Subject {
     Machine(Hostname),
-    Service(ServiceName),
+    Service(ServiceId),
 }
 
 /// a machine's `cpu`, `mem` and `disk` are fractions, `net` is bytes per
