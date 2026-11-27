@@ -8,15 +8,34 @@ use serde::Deserialize;
 
 use crate::web::wire::{Hostname, Os, ProbeKind, ServiceId, ServiceName};
 
-#[derive(Clone, Debug, Deserialize)]
+#[derive(Clone, Debug)]
 pub struct Registry {
     /// the machine this file was written on
     pub machine: Hostname,
     /// in registry order
     pub nodes: Vec<Hostname>,
     pub machines: BTreeMap<Hostname, MachineEntry>,
-    pub services: BTreeMap<ServiceName, ServiceEntry>,
+    /// by name, then by machine
+    pub services: BTreeMap<ServiceId, ServiceEntry>,
     pub ports: Ports,
+}
+
+/// the registry as the file holds it, its services a list
+#[derive(Deserialize)]
+struct File {
+    machine: Hostname,
+    nodes: Vec<Hostname>,
+    machines: BTreeMap<Hostname, MachineEntry>,
+    services: Vec<Listed>,
+    ports: Ports,
+}
+
+#[derive(Deserialize)]
+struct Listed {
+    name: ServiceName,
+    machine: Hostname,
+    #[serde(flatten)]
+    entry: ServiceEntry,
 }
 
 #[derive(Clone, Debug, Deserialize)]
@@ -30,7 +49,6 @@ pub struct MachineEntry {
 
 #[derive(Clone, Debug, Deserialize)]
 pub struct ServiceEntry {
-    pub machine: Hostname,
     pub unit: Option<String>,
     pub probes: Vec<ProbeEntry>,
     pub heartbeat: Option<HeartbeatEntry>,
@@ -101,21 +119,41 @@ impl Registry {
     }
 
     pub fn parse(json: &[u8]) -> Result<Self> {
-        let registry: Self = serde_json::from_slice(json).wrap_err("not a phoebe registry")?;
+        let file: File = serde_json::from_slice(json).wrap_err("not a phoebe registry")?;
+        let mut services = BTreeMap::new();
+        for Listed {
+            name,
+            machine,
+            entry,
+        } in file.services
+        {
+            let id = ServiceId { name, machine };
+            if services.contains_key(&id) {
+                bail!("{id} is registered twice, but a machine runs at most one service of each name");
+            }
+            services.insert(id, entry);
+        }
+        let registry = Self {
+            machine: file.machine,
+            nodes: file.nodes,
+            machines: file.machines,
+            services,
+            ports: file.ports,
+        };
         for name in std::iter::once(&registry.machine)
             .chain(&registry.nodes)
-            .chain(registry.services.values().map(|service| &service.machine))
+            .chain(registry.services.keys().map(|id| &id.machine))
         {
             if !registry.machines.contains_key(name) {
                 bail!("{name} is named, but not among the machines");
             }
         }
-        for (name, service) in &registry.services {
+        for (id, service) in &registry.services {
             if let Some(heartbeat) = &service.heartbeat
                 && !is_metric_name(&heartbeat.metric)
             {
                 bail!(
-                    "the heartbeat of {name}, {:?}, is not a metric name",
+                    "the heartbeat of {id}, {:?}, is not a metric name",
                     heartbeat.metric
                 );
             }
@@ -134,9 +172,7 @@ impl Registry {
     }
 
     pub fn service(&self, id: &ServiceId) -> Option<&ServiceEntry> {
-        self.services
-            .get(&id.name)
-            .filter(|service| service.machine == id.machine)
+        self.services.get(id)
     }
 
     /// `http://<address>:<port>` of a machine in the registry
@@ -144,23 +180,17 @@ impl Registry {
         format!("http://{}:{port}", self.machines[machine].address)
     }
 
-    /// the units of every service that has one, with their machines
-    pub fn units(&self) -> impl Iterator<Item = (&ServiceName, &Hostname, &str)> {
-        self.services.iter().filter_map(|(name, service)| {
-            service
-                .unit
-                .as_deref()
-                .map(|unit| (name, &service.machine, unit))
-        })
+    /// the units of every service that has one
+    pub fn units(&self) -> impl Iterator<Item = (&ServiceId, &str)> {
+        self.services
+            .iter()
+            .filter_map(|(id, service)| service.unit.as_deref().map(|unit| (id, unit)))
     }
 
-    /// the heartbeats of every service that has one, with their machines
-    pub fn heartbeats(&self) -> impl Iterator<Item = (&ServiceName, &Hostname, &HeartbeatEntry)> {
-        self.services.iter().filter_map(|(name, service)| {
-            service
-                .heartbeat
-                .as_ref()
-                .map(|heartbeat| (name, &service.machine, heartbeat))
-        })
+    /// the heartbeats of every service that has one
+    pub fn heartbeats(&self) -> impl Iterator<Item = (&ServiceId, &HeartbeatEntry)> {
+        self.services
+            .iter()
+            .filter_map(|(id, service)| service.heartbeat.as_ref().map(|heartbeat| (id, heartbeat)))
     }
 }

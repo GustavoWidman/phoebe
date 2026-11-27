@@ -10,25 +10,37 @@ use crate::web::{
     wire::*,
 };
 
+/// the entry of `name` on `machine` in a registry file
+fn listed<'a>(fleet: &'a mut Value, machine: &str, name: &str) -> &'a mut Value {
+    fleet["services"]
+        .as_array_mut()
+        .unwrap()
+        .iter_mut()
+        .find(|service| service["name"] == name && service["machine"] == machine)
+        .unwrap()
+}
+
 /// the recorded fleet with heartbeats: on mail, which has a unit and
-/// probes, and on three services that have nothing else
+/// probes, and on four services that have nothing else, backup on two
+/// machines
 fn fleet() -> Value {
     let mut fleet: Value = serde_json::from_str(&Recorded::file("fleet.json")).unwrap();
-    let services = &mut fleet["services"];
-    services["mail"]["heartbeat"] =
+    listed(&mut fleet, "oracle-2", "mail")["heartbeat"] =
         json!({"metric": "mail_queue_healthy_timestamp_seconds", "within": 600});
     for (name, machine) in [
         ("backup", "lab"),
+        ("backup", "oracle-1"),
         ("ghost", "altar"),
         ("report", "desktop-nixos"),
     ] {
-        services[name] = json!({
+        fleet["services"].as_array_mut().unwrap().push(json!({
+            "name": name,
             "machine": machine,
             "unit": null,
             "probes": [],
             "metrics": null,
             "heartbeat": {"metric": format!("{name}_healthy_timestamp_seconds"), "within": 3600},
-        });
+        }));
     }
     fleet
 }
@@ -40,7 +52,7 @@ fn registry() -> Registry {
 #[test]
 fn a_service_with_nothing_but_a_heartbeat_is_in_the_registry() {
     let registry = registry();
-    let backup = &registry.services[&ServiceName::from("backup")];
+    let backup = &registry.services[&ServiceId::new("lab", "backup")];
     assert!(backup.unit.is_none() && backup.probes.is_empty());
     let heartbeat = backup.heartbeat.as_ref().unwrap();
     assert_eq!(
@@ -49,7 +61,7 @@ fn a_service_with_nothing_but_a_heartbeat_is_in_the_registry() {
     );
     // a registry written before heartbeats has none
     assert!(
-        registry.services[&ServiceName::from("adguard")]
+        registry.services[&ServiceId::new("oracle-2", "adguard")]
             .heartbeat
             .is_none()
     );
@@ -58,7 +70,7 @@ fn a_service_with_nothing_but_a_heartbeat_is_in_the_registry() {
 #[test]
 fn a_heartbeat_that_is_no_metric_name_is_refused() {
     let mut fleet = fleet();
-    fleet["services"]["backup"]["heartbeat"]["metric"] = json!("backup} or vector(1)");
+    listed(&mut fleet, "lab", "backup")["heartbeat"]["metric"] = json!("backup} or vector(1)");
     let error = Registry::parse(fleet.to_string().as_bytes()).unwrap_err();
     assert!(
         format!("{error:#}").contains("is not a metric name"),
@@ -93,16 +105,16 @@ fn a_heartbeat_is_fresh_late_missing_or_unknown() {
     }
 
     let snapshot = snapshot::build(&registry, &answers, now, Vec::new());
-    let heartbeat = |name: &str| {
+    let heartbeat = |machine: &str, name: &str| {
         let service = snapshot
             .services
             .iter()
-            .find(|service| service.name.0 == name)
+            .find(|service| service.name.0 == name && service.machine.0 == machine)
             .unwrap();
         service.heartbeat.clone().unwrap()
     };
     assert_eq!(
-        heartbeat("backup"),
+        heartbeat("lab", "backup"),
         Heartbeat {
             metric: "backup_healthy_timestamp_seconds".into(),
             within_ms: 3_600_000,
@@ -110,10 +122,18 @@ fn a_heartbeat_is_fresh_late_missing_or_unknown() {
             healthy_at: Some(Ms(now - 10 * 60_000)),
         }
     );
-    assert_eq!(heartbeat("mail").state, HeartbeatState::Late);
-    assert_eq!(heartbeat("ghost").state, HeartbeatState::Missing);
-    assert_eq!(heartbeat("ghost").healthy_at, None);
-    assert_eq!(heartbeat("report").state, HeartbeatState::Unknown);
+    // backup's gauge on lab is not backup's on oracle-1
+    assert_eq!(
+        heartbeat("oracle-1", "backup").state,
+        HeartbeatState::Missing
+    );
+    assert_eq!(heartbeat("oracle-2", "mail").state, HeartbeatState::Late);
+    assert_eq!(heartbeat("altar", "ghost").state, HeartbeatState::Missing);
+    assert_eq!(heartbeat("altar", "ghost").healthy_at, None);
+    assert_eq!(
+        heartbeat("desktop-nixos", "report").state,
+        HeartbeatState::Unknown
+    );
 
     // mail keeps its unit and probes beside it
     let mail = snapshot

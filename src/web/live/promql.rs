@@ -57,10 +57,11 @@ pub enum Named {
     ProbeLastFailed,
     /// the first minute within a week a probe ran
     ProbeFirst,
-    /// the earliest certificate expiry a probe was served, as any node sees it
+    /// the earliest certificate expiry a probe was served, as any node sees
+    /// it, by service, machine and target
     CertExpiry,
     /// the unix time each registry service with a heartbeat last knew itself
-    /// healthy, from the gauge on its machine, by service
+    /// healthy, from the gauge on its machine, by service and machine
     Heartbeat,
     /// milliseconds the slowest of a service's probes took from each
     /// prober; unset while one of them fails
@@ -209,7 +210,7 @@ impl Named {
                 sel("probe_success", "")
             ),
             Self::CertExpiry => format!(
-                "min by (service, target) ({})",
+                "min by (service, machine, target) ({})",
                 sel("probe_ssl_earliest_cert_expiry", "")
             ),
             Self::Heartbeat => heartbeats(registry, &sel),
@@ -238,7 +239,7 @@ const OWN_INTERFACES: &str = r#"device!~"lo[0-9]*|veth.*|docker.*|br-.*|virbr.*|
 fn units(registry: &Registry) -> String {
     let names: Vec<String> = registry
         .units()
-        .map(|(_, _, unit)| escape_regex(unit))
+        .map(|(_, unit)| escape_regex(unit))
         .collect();
     format!("name=~{}", quote(&names.join("|")))
 }
@@ -257,11 +258,11 @@ fn unit_state(sel: &impl Fn(&str, &str) -> String, units: &str) -> String {
 fn heartbeats(registry: &Registry, sel: &impl Fn(&str, &str) -> String) -> String {
     let each: Vec<String> = registry
         .heartbeats()
-        .map(|(service, machine, heartbeat)| {
+        .map(|(id, heartbeat)| {
             format!(
                 r#"label_replace(max by (machine) ({}), "service", {}, "", "")"#,
-                sel(&heartbeat.metric, &matcher("machine", &machine.0)),
-                quote(&service.0)
+                sel(&heartbeat.metric, &matcher("machine", &id.machine.0)),
+                quote(&id.name.0)
             )
         })
         .collect();

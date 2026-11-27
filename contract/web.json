@@ -1057,7 +1057,7 @@
             "name": "derp",
             "machine": "oracle-2"
           },
-          "summary": "the certificate of https://derp.r3dlust.com expires in 8d 23h 18m 0s",
+          "summary": "the certificate of https://derp.r3dlust.com, for derp on oracle-2, expires in 8d 23h 18m 0s",
           "seen_by": [
             "altar",
             "lab",
@@ -1505,7 +1505,7 @@
         "name": "derp",
         "machine": "oracle-2"
       },
-      "summary": "the certificate of https://derp.r3dlust.com expires in 8d 23h 18m 0s",
+      "summary": "the certificate of https://derp.r3dlust.com, for derp on oracle-2, expires in 8d 23h 18m 0s",
       "seen_by": [
         "altar",
         "lab",

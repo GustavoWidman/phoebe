@@ -5,6 +5,7 @@ mod answers;
 mod heartbeat;
 mod hook;
 mod record;
+mod registry;
 
 use std::collections::{BTreeMap, HashMap};
 

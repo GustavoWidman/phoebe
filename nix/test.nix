@@ -44,12 +44,15 @@ let
             alwaysOn = true;
             address = nodes.${name}.networking.primaryIPAddress;
           });
-          services = {
-            demo = {
+          # ghost runs on the agent and on node1, under one name
+          services = [
+            {
+              name = "demo";
               machine = "agent";
               unit = "demo.service";
-            };
-            web = {
+            }
+            {
+              name = "web";
               machine = "agent";
               unit = "web.service";
               probes = [
@@ -58,22 +61,32 @@ let
                   target = "http://agent:8000/";
                 }
               ];
-            };
-            batch = {
+            }
+            {
+              name = "batch";
               machine = "agent";
               heartbeat = {
                 metric = "batch_healthy_timestamp_seconds";
                 within = 60;
               };
-            };
-            ghost = {
+            }
+            {
+              name = "ghost";
               machine = "agent";
               heartbeat = {
                 metric = "ghost_healthy_timestamp_seconds";
                 within = 60;
               };
-            };
-          };
+            }
+            {
+              name = "ghost";
+              machine = "node1";
+              heartbeat = {
+                metric = "ghost_healthy_timestamp_seconds";
+                within = 60;
+              };
+            }
+          ];
         };
       };
 
@@ -344,12 +357,13 @@ in
                 node,
                 lambda fleet: [
                     a for a in fleet["alerts"]
-                    if (a["rule"], a["service"], a["state"]["kind"]) == ("UnitFailed", "demo", "firing")
+                    if (a["rule"], a["service"], a["state"]["kind"])
+                    == ("UnitFailed", {"name": "demo", "machine": "agent"}, "firing")
                     and a["seen_by"] == ["node1", "node2"]
                 ] != [],
             )
         alert = json.loads(node1.succeed(
-            "browser curl /api/alerts -f | jq -c 'map(select(.service == \"demo\"))[0]'"
+            "browser curl /api/alerts -f | jq -c 'map(select(.service.name == \"demo\"))[0]'"
         ))
         assert alert["summary"] == "demo failed on agent", alert
 
@@ -392,30 +406,48 @@ in
         for node in nodes:
             prometheus(node, 'batch_healthy_timestamp_seconds{machine="agent"}', 'map(.value[1]) == ["1000000000"]')
 
-    with subtest("a stale heartbeat and a missing one page, each with its service and machine"):
+    with subtest("a stale heartbeat and missing ones page, each with its service and machine"):
         # the gauges were stale and missing from boot; ServiceStale waits 5 minutes
-        stale = 'map(.metric | del(.__name__, .alertname, .alertstate)) | sort_by(.service) == ' + json.dumps([
+        stale = 'map(.metric | del(.__name__, .alertname, .alertstate)) | sort_by(.service, .machine) == ' + json.dumps([
             {"machine": "agent", "service": "batch", "severity": "page"},
             {"machine": "agent", "service": "ghost", "severity": "page"},
+            {"machine": "node1", "service": "ghost", "severity": "page"},
         ])
         for node in nodes:
             prometheus(node, 'ALERTS{alertname="ServiceStale", alertstate="firing"}', stale, timeout=600)
+        both = ["node1", "node2"]
         for node in nodes:
             fleet = streamed(
                 node,
                 lambda fleet: sorted(
-                    (a["service"], a["machine"], a["seen_by"]) for a in fleet["alerts"]
+                    (a["service"]["name"], a["service"]["machine"], a["seen_by"]) for a in fleet["alerts"]
                     if (a["rule"], a["state"]["kind"]) == ("ServiceStale", "firing")
-                ) == [("batch", "agent", ["node1", "node2"]), ("ghost", "agent", ["node1", "node2"])],
+                ) == [("batch", "agent", both), ("ghost", "agent", both), ("ghost", "node1", both)],
             )
-            beats = {s["name"]: s["heartbeat"] for s in fleet["services"] if s["heartbeat"]}
-            assert beats["batch"]["state"] == "late" and beats["batch"]["healthy_at"] == 1000000000000, beats
-            assert beats["ghost"]["state"] == "missing" and beats["ghost"]["healthy_at"] is None, beats
+            # the services list by name, then by machine
+            listed = [(s["name"], s["machine"]) for s in fleet["services"]]
+            assert listed == [("batch", "agent"), ("demo", "agent"), ("ghost", "agent"), ("ghost", "node1"), ("web", "agent")], listed
+            beats = {(s["name"], s["machine"]): s["heartbeat"] for s in fleet["services"] if s["heartbeat"]}
+            batch = beats[("batch", "agent")]
+            assert batch["state"] == "late" and batch["healthy_at"] == 1000000000000, beats
+            for machine in ["agent", "node1"]:
+                ghost = beats[("ghost", machine)]
+                assert ghost["state"] == "missing" and ghost["healthy_at"] is None, beats
         alerts = json.loads(node1.succeed("browser curl /api/alerts -f"))
-        summaries = {a["service"]: a["summary"] for a in alerts if a["rule"] == "ServiceStale"}
-        assert summaries["batch"].startswith("batch last reported healthy "), summaries
-        assert summaries["batch"].endswith(" ago on agent"), summaries
-        assert summaries["ghost"] == "ghost_healthy_timestamp_seconds of ghost is missing on agent", summaries
+        summaries = {
+            (a["service"]["name"], a["service"]["machine"]): a["summary"]
+            for a in alerts if a["rule"] == "ServiceStale"
+        }
+        assert summaries[("batch", "agent")].startswith("batch on agent last reported healthy "), summaries
+        assert summaries[("batch", "agent")].endswith(" ago"), summaries
+        assert summaries[("ghost", "agent")] == "ghost on agent is missing ghost_healthy_timestamp_seconds", summaries
+        assert summaries[("ghost", "node1")] == "ghost on node1 is missing ghost_healthy_timestamp_seconds", summaries
+
+        # the logs name each ghost by its machine, and node2 runs none
+        for machine in ["agent", "node1"]:
+            api(node1, f"/api/logs?service={machine}/ghost&limit=1")
+        status = node1.succeed("browser curl '/api/logs?service=node2/ghost' -o /dev/null -w '%{http_code}'")
+        assert status == "404", status
 
         # the push is titled with the summary as it was when it was sent
         def stale_pushed():
@@ -423,8 +455,10 @@ in
                 push["message"]["notification"]["title"] for _, push in pushes()
                 if push["message"]["notification"]["body"] == "ServiceStale, firing"
             ]
-            return "ghost_healthy_timestamp_seconds of ghost is missing on agent" in titles and any(
-                t.startswith("batch last reported healthy ") and t.endswith(" ago on agent") for t in titles
+            return (
+                "ghost on agent is missing ghost_healthy_timestamp_seconds" in titles
+                and "ghost on node1 is missing ghost_healthy_timestamp_seconds" in titles
+                and any(t.startswith("batch on agent last reported healthy ") for t in titles)
             )
 
         for _ in range(24):

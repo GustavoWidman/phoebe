@@ -16,14 +16,12 @@
 let
   inherit (lib)
     attrNames
-    concatLists
     concatMap
     concatStringsSep
     filter
     filterAttrs
     length
     listToAttrs
-    mapAttrsToList
     min
     nameValuePair
     optional
@@ -62,19 +60,17 @@ let
   # PromQL's `name=~"a|b"`, for host names, which hold no other regex syntax
   oneOf = concatStringsSep "|";
 
-  probes = concatLists (
-    mapAttrsToList (
-      service: declared:
-      map (
-        probe:
-        probe
-        // {
-          inherit service;
-          inherit (declared) machine;
-        }
-      ) declared.probes
-    ) services
-  );
+  probes = concatMap (
+    service:
+    map (
+      probe:
+      probe
+      // {
+        service = service.name;
+        inherit (service) machine;
+      }
+    ) service.probes
+  ) services;
 
   queryName = query: "dns_" + lib.replaceStrings [ "." "-" ] [ "_" "_" ] query;
   moduleOf =
@@ -172,19 +168,21 @@ let
     ];
   };
 
-  serviceJobs = mapAttrsToList (name: service: {
-    job_name = "service-${name}";
+  # a job per service, named for its machine and its name, which together
+  # are the service
+  serviceJobs = map (service: {
+    job_name = "service-${service.machine}-${service.name}";
     metrics_path = service.metrics.path;
     static_configs = [
       {
         targets = [ (at service.machine service.metrics.port) ];
         labels = {
           inherit (service) machine;
-          service = name;
+          service = service.name;
         };
       }
     ];
-  }) (filterAttrs (_: service: service.metrics != null) services);
+  }) (filter (service: service.metrics != null) services);
 
   # the systemd unit or launchd job behind a service, as a series selector
   unitSeries =
@@ -198,8 +196,8 @@ let
     else
       "phoebe_launchd_job_failed{${labels}}";
 
-  units = filterAttrs (_: service: service.unit != null) services;
-  heartbeats = filterAttrs (_: service: service.heartbeat != null) services;
+  units = filter (service: service.unit != null) services;
+  heartbeats = filter (service: service.heartbeat != null) services;
   alwaysOn = attrNames (filterAttrs (_: machine: machine.alwaysOn) machines);
   agree = min 2 (length nodes);
 
@@ -222,51 +220,50 @@ let
           rule "MachineDown" "page" ''up{job="node", machine=~"${oneOf alwaysOn}"} == 0'' "5m"
             "{{ $labels.machine }} is down"
         )
-        ++ mapAttrsToList (
-          name: service:
+        ++ map (
+          service:
           (rule "UnitFailed" "page" "${unitSeries service} == 1" "1m"
-            "${name} failed on {{ $labels.machine }}"
+            "${service.name} failed on {{ $labels.machine }}"
           )
           // {
             labels = {
               severity = "page";
-              service = name;
+              service = service.name;
             };
           }
         ) units
-        ++ concatLists (
-          mapAttrsToList (
-            name: service:
-            let
-              inherit (service.heartbeat) metric within;
-              gauge = ''${metric}{machine="${service.machine}"}'';
-              # two rules of one name and labels, a gauge behind and a gauge
-              # missing, which never hold at once. promtool lints them as
-              # duplicates, a warning meant for recording rules. they wait as
-              # long as MachineDown, so a machine going down, whose gauges go
-              # missing with it, fires MachineDown first
-              stale =
-                expr: summary:
-                (rule "ServiceStale" "page" expr "5m" summary)
-                // {
-                  labels = {
-                    severity = "page";
-                    service = name;
-                  };
+        ++ concatMap (
+          service:
+          let
+            inherit (service) name machine;
+            inherit (service.heartbeat) metric within;
+            gauge = ''${metric}{machine="${machine}"}'';
+            # two rules of one name and labels, a gauge behind and a gauge
+            # missing, which never hold at once. promtool lints them as
+            # duplicates, a warning meant for recording rules. they wait as
+            # long as MachineDown, so a machine going down, whose gauges go
+            # missing with it, fires MachineDown first
+            stale =
+              expr: summary:
+              (rule "ServiceStale" "page" expr "5m" summary)
+              // {
+                labels = {
+                  severity = "page";
+                  service = name;
                 };
-            in
-            [
-              (stale "time() - max by (machine) (${gauge}) > ${toString within}" "${name} last reported healthy {{ $value | humanizeDuration }} ago on {{ $labels.machine }}")
-              # absent() keeps the machine label of the gauge's matcher
-              (stale "absent(${gauge})" "${metric} of ${name} is missing on {{ $labels.machine }}")
-            ]
-          ) heartbeats
-        )
+              };
+          in
+          [
+            (stale "time() - max by (machine) (${gauge}) > ${toString within}" "${name} on ${machine} last reported healthy {{ $value | humanizeDuration }} ago")
+            # absent() keeps the machine label of the gauge's matcher
+            (stale "absent(${gauge})" "${name} on ${machine} is missing ${metric}")
+          ]
+        ) heartbeats
         ++ [
           (rule "UnitFailed" "info" (
             ''(node_systemd_unit_state{state="failed"} == 1 or phoebe_launchd_job_failed == 1)''
-            + lib.optionalString (units != { }) (
-              " unless on(machine, name) (${concatStringsSep " or " (mapAttrsToList (_: unitSeries) units)})"
+            + lib.optionalString (units != [ ]) (
+              " unless on(machine, name) (${concatStringsSep " or " (map unitSeries units)})"
             )
           ) "1m" "{{ $labels.name }} failed on {{ $labels.machine }}")
           (rule "ServiceUnreachable" "page"
@@ -275,12 +272,12 @@ let
             # so a machine going down fires MachineDown first and the
             # alertmanager holds back the unreachable services behind it
             "5m"
-            "{{ $labels.service }} is unreachable at {{ $labels.target }} from {{ $value }} nodes"
+            "{{ $labels.service }} on {{ $labels.machine }} is unreachable at {{ $labels.target }} from {{ $value }} nodes"
           )
           (rule "CertExpiring" "info"
             "min by (service, machine, target) (probe_ssl_earliest_cert_expiry) - time() < 14 * 86400"
             "10m"
-            "the certificate of {{ $labels.target }} expires in {{ $value | humanizeDuration }}"
+            "the certificate of {{ $labels.target }}, for {{ $labels.service }} on {{ $labels.machine }}, expires in {{ $value | humanizeDuration }}"
           )
           (rule "DiskAlmostFull" "page" "(${free} < 0.10) and ${writable}" "15m"
             "{{ $labels.mountpoint }} on {{ $labels.machine }} is {{ $value | humanizePercentage }} free"
@@ -526,8 +523,9 @@ let
     inherit nodes ports;
     inherit (cfg) machine;
     machines = lib.mapAttrs (_: machine: { inherit (machine) os alwaysOn address; }) machines;
-    services = lib.mapAttrs (_: service: {
+    services = map (service: {
       inherit (service)
+        name
         machine
         unit
         metrics

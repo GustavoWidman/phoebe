@@ -82,6 +82,14 @@ let
 
   service = types.submodule {
     options = {
+      name = mkOption {
+        type = types.nonEmptyStr;
+        example = "heimdall";
+        description = ''
+          The service's name. Two machines may each run a service of one name,
+          so a service is its machine and its name together.
+        '';
+      };
       machine = mkOption {
         type = types.str;
         description = "The machine the service runs on, a name in `fleet.machines`.";
@@ -153,8 +161,12 @@ let
     };
   };
 
-  probesWith =
-    predicate: lib.concatMap (service: lib.filter predicate service.probes) (lib.attrValues services);
+  probesWith = predicate: lib.concatMap (service: lib.filter predicate service.probes) services;
+
+  # each (machine, name) registered more than once
+  registeredTwice = lib.filter (group: lib.length group > 1) (
+    lib.attrValues (lib.groupBy (service: "${service.machine}/${service.name}") services)
+  );
 in
 {
   options.services.phoebe = {
@@ -199,9 +211,19 @@ in
       };
 
       services = mkOption {
-        type = types.attrsOf service;
-        default = { };
-        description = "Every service the fleet runs, by name.";
+        type = types.listOf service;
+        default = [ ];
+        example = lib.literalExpression ''
+          [
+            { name = "norn"; machine = "oracle-1"; unit = "norn.service"; }
+            { name = "norn"; machine = "oracle-2"; unit = "norn.service"; }
+          ]
+        '';
+        description = ''
+          Every service the fleet runs. A service is its machine and its name
+          together: two machines may run a service of one name, one machine
+          only one.
+        '';
       };
     };
 
@@ -293,10 +315,20 @@ in
       assertion = machines ? ${node};
       message = "phoebe: services.phoebe.fleet.nodes names ${node}, which fleet.machines lacks.";
     }) nodes
-    ++ lib.mapAttrsToList (name: service: {
+    ++ map (service: {
       assertion = machines ? ${service.machine};
-      message = "phoebe: services.phoebe.fleet.services.${name} runs on ${service.machine}, which fleet.machines lacks.";
-    }) services;
+      message = "phoebe: services.phoebe.fleet.services has ${service.name} on ${service.machine}, which fleet.machines lacks.";
+    }) services
+    ++ map (
+      group:
+      let
+        service = lib.head group;
+      in
+      {
+        assertion = false;
+        message = "phoebe: services.phoebe.fleet.services lists ${service.name} on ${service.machine} ${toString (lib.length group)} times, but a machine runs at most one service of each name.";
+      }
+    ) registeredTwice;
 
     environment.systemPackages = [ cfg.package ];
   };
