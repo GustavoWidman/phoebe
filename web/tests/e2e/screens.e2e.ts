@@ -59,6 +59,26 @@ test('tapping a node on the probe map shows its latency', async ({ page, fleet: 
 	await expect(page.locator('.map g[data-node="oracle-2"]')).toHaveClass(/\bsel\b/);
 });
 
+test('one name on two machines is two services, each under its machine', async ({
+	page,
+	fleet: _
+}) => {
+	await page.goto('/');
+	const rows = page.locator('[data-service$="/derp"]');
+	await expect(rows).toHaveCount(2);
+	await expect(rows.nth(0)).toHaveAttribute('data-service', 'oracle-1/derp');
+	await expect(rows.nth(1)).toHaveAttribute('data-service', 'oracle-2/derp');
+	await rows.nth(1).click();
+	await expect(page).toHaveURL('/machines/oracle-2/services/derp');
+	for (const machine of ['oracle-1', 'oracle-2']) {
+		await page.goto(`/machines/${machine}/services/derp`);
+		await expect(page.locator('.tb h1')).toHaveText('derp');
+		await expect(page.locator('.tb .sub')).toContainText(`on ${machine}`);
+	}
+	await page.goto('/services/derp');
+	await expect(page).toHaveURL('/');
+});
+
 test('logs search highlights what matches and the tail brings new lines', async ({
 	page,
 	fleet
