@@ -1,5 +1,6 @@
 <!-- a service: who reaches it, and the median latency from the nodes that do -->
 <script lang="ts">
+	import { servicePath } from '#lib/api.svelte.ts';
 	import { latency } from '#lib/derive/format.ts';
 	import { checkWord, staleSay, type ServiceStatus } from '#lib/derive/status.ts';
 	import { href } from '#lib/router.svelte.ts';
@@ -15,8 +16,7 @@
 <a
 	class="row"
 	href={href({ screen: 'service', machine: s.machine, name: s.name })}
-	data-service={s.name}
-	data-machine={s.machine}
+	data-service={servicePath(s)}
 >
 	<Dot s={st.dot} />
 	<div>

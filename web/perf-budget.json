@@ -10,7 +10,7 @@
 		"/machines/:name": {
 			"module": "src/lib/screens/Machine.svelte"
 		},
-		"/services/:name": {
+		"/machines/:machine/services/:name": {
 			"module": "src/lib/screens/Service.svelte",
 			"js": 39
 		},

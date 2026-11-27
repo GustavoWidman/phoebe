@@ -35,7 +35,7 @@ test('machines show their vitals, and a desktop rests rather than fails', async 
 
 test('services show which nodes reach them', async ({ page, fleet: _ }) => {
 	await page.goto('/');
-	const portfolio = page.locator('[data-service="portfolio"]').first();
+	const portfolio = page.locator('[data-service="oracle-2/portfolio"]').first();
 	await expect(portfolio.locator('.dot').first()).toHaveAttribute('data-s', 'warn');
 	// the phone counts the nodes that reach it, the desktop table names the one that times out
 	await expect(portfolio).toContainText(/3 of 4 nodes reach it|timeout/);
